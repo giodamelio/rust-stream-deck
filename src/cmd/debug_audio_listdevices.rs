@@ -1,6 +1,7 @@
 use eyre::Result;
 
 use crate::audio::{Audio, Device, Direction};
+
 pub fn run() -> Result<()> {
     let mut audio = Audio::new();
 
