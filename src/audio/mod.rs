@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::thread::JoinHandle;
 
-use anyhow::{anyhow, bail, Context, Result};
+use eyre::{bail, eyre, Result, WrapErr};
 
 #[derive(Debug)]
 pub struct Audio {
@@ -83,7 +83,7 @@ impl Audio {
     pub fn wait(&mut self) -> Result<()> {
         match self.thread_handle.take() {
             None => bail!("Problem waiting for Audio thread"),
-            Some(handle) => handle.join().map_err(|e| anyhow!("{:?}", e))?,
+            Some(handle) => handle.join().map_err(|e| eyre!("{:?}", e))?,
         }
     }
 
@@ -91,7 +91,7 @@ impl Audio {
     pub fn shutdown(&self) -> Result<()> {
         self.command_tx
             .send(AudioCommand::Shutdown)
-            .context("Problem shutting down")
+            .wrap_err("Problem shutting down")
     }
 
     /// Get a vector of the systems audio devices
@@ -108,6 +108,6 @@ impl Audio {
         self.command_tx.send(command)?;
         self.response_rx
             .recv()
-            .context("Problem receiving response")
+            .wrap_err("Problem receiving response")
     }
 }

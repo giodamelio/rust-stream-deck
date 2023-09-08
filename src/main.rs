@@ -1,7 +1,7 @@
 mod audio;
 
-use anyhow::Result;
 use clap::{Parser, Subcommand};
+use eyre::Result;
 use std::process;
 
 use audio::Audio;
