@@ -51,6 +51,28 @@ pub struct Device {
     pub description: Option<String>,
 }
 
+impl TryFrom<IMMDevice> for Device {
+    type Error = eyre::Error;
+    fn try_from(imm_device: IMMDevice) -> Result<Self> {
+        unsafe {
+            let endpoint_id = imm_device.GetId()?.to_string()?;
+            let endpoint: IMMEndpoint = imm_device.cast()?;
+            let prop_store = imm_device.OpenPropertyStore(STGM_READ)?;
+
+            let friendly_name = prop_store.get_prop_string(PKEY_Device_FriendlyName);
+            let description = prop_store.get_prop_string(PKEY_Device_DeviceDesc);
+
+            Ok(Device {
+                mode: endpoint.GetDataFlow()?.into(),
+                state: imm_device.GetState()?.into(),
+                endpoint_id,
+                friendly_name,
+                description,
+            })
+        }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Direction {
     Input,
@@ -88,6 +110,27 @@ impl From<u32> for DeviceState {
     }
 }
 
+/// Some helpers for working with an IPropertyStore
+trait ProperStoreHelpers {
+    /// Get a property as a String
+    unsafe fn get_prop_string(&self, key: PROPERTYKEY) -> Option<String>;
+}
+
+impl ProperStoreHelpers for IPropertyStore {
+    unsafe fn get_prop_string(&self, key: PROPERTYKEY) -> Option<String> {
+        let val = self
+            .GetValue(&key as *const _)
+            .map_err(|e| e.to_owned())
+            .ok()?;
+        let val2 = val.Anonymous.Anonymous;
+        // See https://learn.microsoft.com/en-us/windows/win32/api/wtypes/ne-wtypes-varenum
+        match val2.vt.0 {
+            31 => val2.Anonymous.pwszVal.to_string().ok(),
+            _ => None,
+        }
+    }
+}
+
 impl Audio {
     pub fn new() -> Self {
         let (command_tx, command_rx) = mpsc::channel();
@@ -114,43 +157,12 @@ impl Audio {
                         AudioCommand::Devices => {
                             let mut devices: Vec<Device> = vec![];
 
-                            unsafe fn get_prop_string(
-                                prop_store: &IPropertyStore,
-                                key: PROPERTYKEY,
-                            ) -> Option<String> {
-                                let val = prop_store
-                                    .GetValue(&key as *const _)
-                                    .map_err(|e| e.to_owned())
-                                    .ok()?;
-                                let val2 = val.Anonymous.Anonymous;
-                                // See https://learn.microsoft.com/en-us/windows/win32/api/wtypes/ne-wtypes-varenum
-                                match val2.vt.0 {
-                                    31 => val2.Anonymous.pwszVal.to_string().ok(),
-                                    _ => None,
-                                }
-                            }
-
                             // Get all audio devices
                             let device_collection =
                                 enumerator.EnumAudioEndpoints(eAll, DEFAULT_STATE_MASK)?;
                             for n in 0..device_collection.GetCount()? {
                                 let device = device_collection.Item(n)?;
-                                let endpoint_id = device.GetId()?.to_string()?;
-                                let endpoint: IMMEndpoint = device.cast()?;
-                                let prop_store = device.OpenPropertyStore(STGM_READ)?;
-
-                                let friendly_name =
-                                    get_prop_string(&prop_store, PKEY_Device_FriendlyName);
-                                let description =
-                                    get_prop_string(&prop_store, PKEY_Device_DeviceDesc);
-
-                                devices.push(Device {
-                                    mode: endpoint.GetDataFlow()?.into(),
-                                    state: device.GetState()?.into(),
-                                    endpoint_id,
-                                    friendly_name,
-                                    description,
-                                })
+                                devices.push(device.try_into()?);
                             }
 
                             response_tx.send(AudioResponse::Devices(devices))?
