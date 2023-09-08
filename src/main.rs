@@ -1,4 +1,10 @@
+mod audio;
+
+use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::process;
+
+use audio::Audio;
 
 /// Alternate StreamDeck companion software
 #[derive(Debug, Parser)]
@@ -23,7 +29,7 @@ enum DebugCommand {
     /// Audio related tools
     Audio {
         #[clap(subcommand)]
-        command: AudioCommand
+        command: AudioCommand,
     },
 }
 
@@ -32,32 +38,46 @@ enum AudioCommand {
     /// List audio devices
     ListDevices,
     /// List audio streams for a device
-    ListStreams {
-        device: String
-    },
+    ListStreams { device: String },
 }
 
-fn main() {
+fn wrapped() -> Result<()> {
     let cli = Cli::parse();
-    println!("{:#?}", cli);
+
     match cli.command {
         None => {
             todo!("Start the main application");
         }
-        Some(command) => {
-            match command {
-                Command::Debug { command } => match command {
-                    DebugCommand::Audio { command } => match command {
-                        AudioCommand::ListDevices => {
-                            todo!("List devices");
+        Some(command) => match command {
+            Command::Debug { command } => match command {
+                DebugCommand::Audio { command } => match command {
+                    AudioCommand::ListDevices => {
+                        let mut audio = Audio::new();
+
+                        for device in audio.devices()? {
+                            println!("Device: {:?}", device);
                         }
-                        AudioCommand::ListStreams { device } => {
-                            todo!("Listing streams for device={}", device);
-                        }
+
+                        audio.shutdown()?;
+                        audio.wait()?;
+
+                        Ok(())
                     }
-                }
-            }
+                    AudioCommand::ListStreams { device } => {
+                        todo!("Listing streams for device={}", device);
+                    }
+                },
+            },
+        },
+    }
+}
+
+fn main() {
+    match wrapped() {
+        Ok(()) => {}
+        Err(err) => {
+            eprintln!("{}", err);
+            process::exit(1);
         }
     }
-
 }
