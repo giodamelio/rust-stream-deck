@@ -29,6 +29,7 @@ enum AudioCommand {
     Ping,
     Shutdown,
     Devices,
+    DefaultDevice(Direction),
 }
 
 /// Responses the Audio thread can reply with
@@ -36,6 +37,16 @@ enum AudioCommand {
 enum AudioResponse {
     Pong,
     Devices(Vec<Device>),
+    DefaultDevice(Device),
+}
+
+impl From<Direction> for EDataFlow {
+    fn from(value: Direction) -> Self {
+        match value {
+            Direction::Input => eCapture,
+            Direction::Output => eRender,
+        }
+    }
 }
 
 /// Some helpers for working with an IPropertyStore
@@ -81,6 +92,12 @@ impl Audio {
                         }
                         AudioCommand::Shutdown => {
                             break;
+                        }
+                        AudioCommand::DefaultDevice(direction) => {
+                            let default_device = enumerator
+                                .GetDefaultAudioEndpoint(direction.into(), eMultimedia)?;
+                            response_tx
+                                .send(AudioResponse::DefaultDevice(default_device.try_into()?))?
                         }
                         AudioCommand::Devices => {
                             let mut devices: Vec<Device> = vec![];
@@ -128,6 +145,17 @@ impl Audio {
     pub fn devices(&self) -> Result<Vec<Device>> {
         if let AudioResponse::Devices(devices) = self.command(AudioCommand::Devices)? {
             Ok(devices)
+        } else {
+            bail!("Bad response")
+        }
+    }
+
+    /// Get the default output or input device
+    pub fn default_device(&self, direction: Direction) -> Result<Device> {
+        if let AudioResponse::DefaultDevice(device) =
+            self.command(AudioCommand::DefaultDevice(direction))?
+        {
+            Ok(device)
         } else {
             bail!("Bad response")
         }
