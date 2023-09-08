@@ -1,9 +1,23 @@
-use std::sync::mpsc;
+
+
 use std::sync::mpsc::{Receiver, Sender};
-use std::thread;
+use std::sync::{mpsc};
 use std::thread::JoinHandle;
+use std::{thread};
 
 use eyre::{bail, eyre, Result, WrapErr};
+use windows::core::ComInterface;
+use windows::Win32::Devices::FunctionDiscovery::PKEY_Device_DeviceDesc;
+use windows::Win32::UI::Shell::PropertiesSystem::IPropertyStore;
+use windows::Win32::{
+    Devices::FunctionDiscovery::{PKEY_Device_FriendlyName},
+    Media::Audio::*,
+    System::Com::*,
+    UI::Shell::PropertiesSystem::PROPERTYKEY,
+};
+
+const DEFAULT_STATE_MASK: u32 =
+    DEVICE_STATE_ACTIVE | DEVICE_STATE_DISABLED | DEVICE_STATE_UNPLUGGED;
 
 #[derive(Debug)]
 pub struct Audio {
@@ -28,15 +42,50 @@ enum AudioResponse {
     Devices(Vec<Device>),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Device {
     pub mode: Direction,
+    pub state: DeviceState,
+    pub endpoint_id: String,
+    pub friendly_name: Option<String>,
+    pub description: Option<String>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Direction {
     Input,
     Output,
+}
+
+impl From<EDataFlow> for Direction {
+    fn from(val: EDataFlow) -> Self {
+        match val.0 {
+            0 => Direction::Output,
+            1 => Direction::Input,
+            dir => panic!("Invalid direction: {}", dir),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum DeviceState {
+    Unknown,
+    Active,
+    Disabled,
+    NotPresent,
+    Unplugged,
+}
+
+impl From<u32> for DeviceState {
+    fn from(val: u32) -> Self {
+        match val {
+            1 => DeviceState::Active,
+            2 => DeviceState::Disabled,
+            4 => DeviceState::NotPresent,
+            8 => DeviceState::Unplugged,
+            _ => DeviceState::Unknown,
+        }
+    }
 }
 
 impl Audio {
@@ -45,31 +94,72 @@ impl Audio {
         let (response_tx, response_rx) = mpsc::channel();
 
         let thread_handle = thread::spawn(move || -> Result<()> {
-            let devices = vec![
-                Device {
-                    mode: Direction::Output,
-                },
-                Device {
-                    mode: Direction::Input,
-                },
-            ];
+            unsafe {
+                // Initialize things
+                CoInitializeEx(None, COINIT_MULTITHREADED)?;
 
-            for command in command_rx.iter() {
-                match command {
-                    AudioCommand::Ping => {
-                        println!("PING");
-                        response_tx.send(AudioResponse::Pong)?
-                    }
-                    AudioCommand::Shutdown => {
-                        break;
-                    }
-                    AudioCommand::Devices => {
-                        response_tx.send(AudioResponse::Devices(devices.clone()))?
+                // Create the device enumerator
+                let enumerator: IMMDeviceEnumerator =
+                    CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
+
+                for command in command_rx.iter() {
+                    match command {
+                        AudioCommand::Ping => {
+                            println!("PING");
+                            response_tx.send(AudioResponse::Pong)?
+                        }
+                        AudioCommand::Shutdown => {
+                            break;
+                        }
+                        AudioCommand::Devices => {
+                            let mut devices: Vec<Device> = vec![];
+
+                            unsafe fn get_prop_string(
+                                prop_store: &IPropertyStore,
+                                key: PROPERTYKEY,
+                            ) -> Option<String> {
+                                let val = prop_store
+                                    .GetValue(&key as *const _)
+                                    .map_err(|e| e.to_owned())
+                                    .ok()?;
+                                let val2 = val.Anonymous.Anonymous;
+                                // See https://learn.microsoft.com/en-us/windows/win32/api/wtypes/ne-wtypes-varenum
+                                match val2.vt.0 {
+                                    31 => val2.Anonymous.pwszVal.to_string().ok(),
+                                    _ => None,
+                                }
+                            }
+
+                            // Get all audio devices
+                            let device_collection =
+                                enumerator.EnumAudioEndpoints(eAll, DEFAULT_STATE_MASK)?;
+                            for n in 0..device_collection.GetCount()? {
+                                let device = device_collection.Item(n)?;
+                                let endpoint_id = device.GetId()?.to_string()?;
+                                let endpoint: IMMEndpoint = device.cast()?;
+                                let prop_store = device.OpenPropertyStore(STGM_READ)?;
+
+                                let friendly_name =
+                                    get_prop_string(&prop_store, PKEY_Device_FriendlyName);
+                                let description =
+                                    get_prop_string(&prop_store, PKEY_Device_DeviceDesc);
+
+                                devices.push(Device {
+                                    mode: endpoint.GetDataFlow()?.into(),
+                                    state: device.GetState()?.into(),
+                                    endpoint_id,
+                                    friendly_name,
+                                    description,
+                                })
+                            }
+
+                            response_tx.send(AudioResponse::Devices(devices))?
+                        }
                     }
                 }
-            }
 
-            Ok(())
+                Ok(())
+            }
         });
 
         Self {
