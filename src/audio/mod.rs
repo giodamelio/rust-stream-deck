@@ -1,12 +1,16 @@
 mod audio;
 mod device;
+mod stream;
 
+use crossbeam::channel::{Receiver, Sender};
+use eyre::{Result, WrapErr};
 use windows::Win32::UI::Shell::PropertiesSystem::IPropertyStore;
 use windows::Win32::{Media::Audio::*, UI::Shell::PropertiesSystem::PROPERTYKEY};
 
 // Re-export some stuff
 pub(crate) use audio::Audio;
 pub(crate) use device::{Device, Direction};
+pub(crate) use stream::Stream;
 
 const DEFAULT_STATE_MASK: u32 =
     DEVICE_STATE_ACTIVE | DEVICE_STATE_DISABLED | DEVICE_STATE_UNPLUGGED;
@@ -19,6 +23,7 @@ enum Request {
     Shutdown,
     Devices,
     DefaultDevice(Direction),
+    Streams(Device),
 }
 
 /// Responses the Audio thread can reply with
@@ -27,6 +32,27 @@ enum Response {
     Pong,
     Devices(Vec<Device>),
     DefaultDevice(Device),
+    Streams(Vec<Stream>),
+}
+
+#[derive(Debug, Clone)]
+struct CommandChannel(Sender<Request>, Receiver<Response>);
+
+impl CommandChannel {
+    pub fn new(command_tx: Sender<Request>, response_rx: Receiver<Response>) -> Self {
+        Self(command_tx, response_rx)
+    }
+}
+
+impl Commandable for CommandChannel {
+    fn command(&self, command: Request) -> Result<Response> {
+        self.0.send(command)?;
+        self.1.recv().wrap_err("Problem receiving response")
+    }
+}
+
+trait Commandable {
+    fn command(&self, command: Request) -> Result<Response>;
 }
 
 /// Some helpers for working with an IPropertyStore
