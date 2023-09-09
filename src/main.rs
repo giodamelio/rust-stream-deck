@@ -30,6 +30,11 @@ enum DebugCommand {
         #[clap(subcommand)]
         command: AudioCommand,
     },
+    /// Streamdeck related tools
+    Deck {
+        #[clap(subcommand)]
+        command: DeckCommand,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -46,6 +51,12 @@ pub struct ListStreamsOptions {
     device: Option<String>,
 }
 
+#[derive(Debug, Subcommand)]
+enum DeckCommand {
+    /// List streamdeck devices
+    ListDevices,
+}
+
 fn wrapped() -> Result<()> {
     let cli = Cli::parse();
 
@@ -58,6 +69,9 @@ fn wrapped() -> Result<()> {
                 DebugCommand::Audio { command } => match command {
                     AudioCommand::ListDevices => cmd::debug_audio_listdevices(),
                     AudioCommand::ListStreams(options) => cmd::debug_audio_liststreams(options),
+                },
+                DebugCommand::Deck { command } => match command {
+                    DeckCommand::ListDevices => cmd::debug_deck_listdevices(),
                 },
             },
         },
