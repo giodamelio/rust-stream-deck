@@ -1,7 +1,7 @@
 mod audio;
 mod cmd;
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use eyre::Result;
 use std::process;
 
@@ -37,7 +37,13 @@ enum AudioCommand {
     /// List audio devices
     ListDevices,
     /// List audio streams for a device
-    ListStreams { device: String },
+    ListStreams(ListStreamsOptions),
+}
+
+#[derive(Debug, Args)]
+pub struct ListStreamsOptions {
+    /// The device to list streams for. If no device is specified, the default output will be used
+    device: Option<String>,
 }
 
 fn wrapped() -> Result<()> {
@@ -51,9 +57,7 @@ fn wrapped() -> Result<()> {
             Command::Debug { command } => match command {
                 DebugCommand::Audio { command } => match command {
                     AudioCommand::ListDevices => cmd::debug_audio_listdevices(),
-                    AudioCommand::ListStreams { device } => {
-                        todo!("Listing streams for device={}", device);
-                    }
+                    AudioCommand::ListStreams(options) => cmd::debug_audio_liststreams(options),
                 },
             },
         },
