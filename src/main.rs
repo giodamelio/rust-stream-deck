@@ -1,5 +1,6 @@
 mod audio;
 mod cmd;
+mod deck;
 
 use clap::{Args, Parser, Subcommand};
 use eyre::Result;
