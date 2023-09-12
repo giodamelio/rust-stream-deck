@@ -56,6 +56,8 @@ pub struct ListStreamsOptions {
 enum DeckCommand {
     /// List streamdeck devices
     ListDevices,
+    /// Make every screen on a streamdeck fully white
+    Whiteout,
 }
 
 fn wrapped() -> Result<()> {
@@ -73,6 +75,7 @@ fn wrapped() -> Result<()> {
                 },
                 DebugCommand::Deck { command } => match command {
                     DeckCommand::ListDevices => cmd::debug_deck_listdevices(),
+                    DeckCommand::Whiteout => cmd::debug_deck_whiteout(),
                 },
             },
         },
