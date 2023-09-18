@@ -1,29 +1,6 @@
-[package]
-name = "rust-stream-deck"
-version = "0.1.0"
-edition = "2021"
+resolver = "2"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-clap = { version = "4.4.2", features = ["derive"] }
-crossbeam = "0.8.2"
-elgato-streamdeck = "0.4.1"
-eyre = "0.6.8"
-hidapi = "2.4.1"
-image = "0.24.7"
-
-[dependencies.windows]
-version = "0.51.1"
-features = [
-    "implement",
-    "Win32_Foundation",
-    "Win32_Media_Audio",
-    "Win32_System_Variant",
-    "Win32_System_Com_StructuredStorage",
-    "Win32_UI_Shell_PropertiesSystem",
-    "Win32_System_Com",
-    "Win32_Media_Audio_Endpoints",
-    "Win32_Devices_FunctionDiscovery",
+[workspace]
+members = [
+    "crates/legacy/"
 ]
-
