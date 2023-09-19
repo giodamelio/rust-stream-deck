@@ -3,10 +3,9 @@ mod system_input;
 
 use bevy::input::InputSystem;
 use bevy::prelude::*;
-use elgato_streamdeck::{
-    info::Kind as RawKind, list_devices, new_hidapi, StreamDeck as RawStreamDeck,
-};
+use elgato_streamdeck::{info::Kind as RawKind, list_devices, new_hidapi};
 
+pub use elgato_streamdeck::StreamDeck as RawStreamDeck;
 pub use streamdeck::{StreamDeckButton, StreamDeckEncoder};
 
 #[derive(Default)]
