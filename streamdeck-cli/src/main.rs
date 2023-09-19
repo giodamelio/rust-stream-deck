@@ -1,7 +1,9 @@
 use bevy::log::{self, LogPlugin};
 use bevy::prelude::*;
 
-use bevy_streamdeck::{RawStreamDeck, StreamDeckButton, StreamDeckEncoder, StreamDeckPlugin};
+use bevy_streamdeck::{
+    StreamDeckBrightness, StreamDeckButton, StreamDeckEncoder, StreamDeckPlugin,
+};
 
 fn main() {
     App::new()
@@ -45,15 +47,15 @@ fn log_encoder_presses(encoders: Res<Input<StreamDeckEncoder>>) {
 }
 
 fn change_backlight_level(
-    streamdeck: NonSendMut<RawStreamDeck>,
+    mut brightness: ResMut<StreamDeckBrightness>,
     encoders: Res<Axis<StreamDeckEncoder>>,
 ) {
     if encoders.is_changed() {
-        let brightness = encoders
+        let new_brightness = encoders
             .get_unclamped(StreamDeckEncoder(0))
             .unwrap_or(0.0)
             .clamp(0.0, 100.0);
 
-        streamdeck.set_brightness(brightness as u8).unwrap();
+        *brightness = StreamDeckBrightness(new_brightness as u8);
     }
 }

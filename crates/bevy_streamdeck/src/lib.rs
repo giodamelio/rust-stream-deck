@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use elgato_streamdeck::{info::Kind as RawKind, list_devices, new_hidapi};
 
 pub use elgato_streamdeck::StreamDeck as RawStreamDeck;
-pub use streamdeck::{StreamDeckButton, StreamDeckEncoder};
+pub use streamdeck::{StreamDeckBrightness, StreamDeckButton, StreamDeckEncoder};
 
 #[derive(Default)]
 pub struct StreamDeckPlugin;
@@ -17,8 +17,18 @@ impl Plugin for StreamDeckPlugin {
         app.init_resource::<Input<StreamDeckButton>>()
             .init_resource::<Axis<StreamDeckEncoder>>()
             .init_resource::<Input<StreamDeckEncoder>>()
+            .init_resource::<StreamDeckBrightness>()
             .insert_non_send_resource(deck)
-            .add_systems(PreUpdate, system_input::system.before(InputSystem));
+            .add_systems(PreUpdate, system_input::system.before(InputSystem))
+            .add_systems(Update, system_backlight);
+    }
+}
+
+fn system_backlight(streamdeck: NonSendMut<RawStreamDeck>, brightness: Res<StreamDeckBrightness>) {
+    if brightness.is_changed() {
+        streamdeck
+            .set_brightness(brightness.0)
+            .expect("Could not set backlight brightness");
     }
 }
 
