@@ -19,7 +19,7 @@ pub fn system(
     // Handle incoming events
     if let Ok(event) = streamdeck.read_input(None) {
         match event {
-            StreamDeckInput::NoData => return,
+            StreamDeckInput::NoData => (),
             StreamDeckInput::ButtonStateChange(buttons) => {
                 trace!("Button state change: {:?}", buttons);
 
@@ -27,13 +27,13 @@ pub fn system(
                     let button = StreamDeckButton(index as u8);
 
                     // If the input is currently pressed, and event is not pressed, release the input
-                    if button_inputs.pressed(button) && *button_pressed == false {
+                    if button_inputs.pressed(button) && !(*button_pressed) {
                         button_inputs.release(button);
                         continue;
                     }
 
                     // If the button is not pressed, and the event says that is is, press the input
-                    if !button_inputs.pressed(button) && *button_pressed == true {
+                    if !button_inputs.pressed(button) && *button_pressed {
                         button_inputs.press(button);
                         continue;
                     }
@@ -46,13 +46,13 @@ pub fn system(
                     let encoder = StreamDeckEncoder(index as u8);
 
                     // If the input is currently pressed, and event is not pressed, release the input
-                    if encoder_inputs.pressed(encoder) && *encoder_pressed == false {
+                    if encoder_inputs.pressed(encoder) && !(*encoder_pressed) {
                         encoder_inputs.release(encoder);
                         continue;
                     }
 
                     // If the button is not pressed, and the event says that is is, press the input
-                    if !encoder_inputs.pressed(encoder) && *encoder_pressed == true {
+                    if !encoder_inputs.pressed(encoder) && *encoder_pressed {
                         encoder_inputs.press(encoder);
                         continue;
                     }
@@ -68,19 +68,22 @@ pub fn system(
                     encoder_axis.set(knob, current + (*change as f32));
                 }
             }
+            // TODO: implement this
             StreamDeckInput::TouchScreenPress(x, y) => {
                 trace!("Touch screen press x={} y={}", x, y);
             }
+            // TODO: implement this
             StreamDeckInput::TouchScreenLongPress(x, y) => {
                 trace!("Touch screen long press x={} y={}", x, y);
             }
-            StreamDeckInput::TouchScreenSwipe((startx, starty), (endx, endy)) => {
+            // TODO: implement this
+            StreamDeckInput::TouchScreenSwipe((start_x, start_y), (end_x, end_y)) => {
                 trace!(
                     "Touch screen long press start={},{} end={},{}",
-                    startx,
-                    starty,
-                    endx,
-                    endy
+                    start_x,
+                    start_y,
+                    end_x,
+                    end_y
                 );
             }
         }
