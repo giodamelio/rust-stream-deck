@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = { version = "0.11.2", default-features = false }
+bevy = { version = "0.11.2", default-features = false, features = ["bevy_asset", "bevy_render", "png"] }
 elgato-streamdeck = "0.4.1"
+image = "0.24.7"

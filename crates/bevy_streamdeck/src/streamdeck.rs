@@ -1,4 +1,9 @@
-use bevy::prelude::Resource;
+use bevy::prelude::*;
+
+#[derive(Event, Debug)]
+pub enum StreamDeckEvent {
+    ButtonSetImage(Handle<Image>),
+}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct StreamDeckButton(pub u8);
