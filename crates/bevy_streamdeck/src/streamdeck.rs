@@ -1,21 +1,25 @@
 use bevy::prelude::*;
 
-#[derive(Event, Debug)]
-pub enum StreamDeckEvent {
-    ButtonSetImage(Handle<Image>),
-}
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub struct Button(pub u8);
+
+#[derive(Resource, Default, Debug, Clone, PartialEq)]
+pub struct ButtonImage(pub u8, pub Handle<Image>);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub struct StreamDeckButton(pub u8);
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub struct StreamDeckEncoder(pub u8);
+pub struct Encoder(pub u8);
 
 #[derive(Resource, Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub struct StreamDeckBrightness(pub u8);
+pub struct Brightness(pub u8);
 
-impl Default for StreamDeckBrightness {
+impl Default for Brightness {
     fn default() -> Self {
         Self(100)
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Command {
+    SetBrightness(u8),
+    SetButtonImage(u8, Handle<Image>),
 }

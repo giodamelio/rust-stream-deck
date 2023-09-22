@@ -2,9 +2,7 @@ use bevy::log::{self, LogPlugin};
 use bevy::prelude::*;
 use std::collections::HashMap;
 
-use bevy_streamdeck::{
-    StreamDeckBrightness, StreamDeckButton, StreamDeckEncoder, StreamDeckEvent, StreamDeckPlugin,
-};
+use bevy_streamdeck::{streamdeck, StreamDeckPlugin};
 
 fn main() {
     App::new()
@@ -12,8 +10,8 @@ fn main() {
         .add_plugins((
             MinimalPlugins,
             LogPlugin {
-                filter: "bevy_hid_experiment=trace,bevy_streamdeck=debug".into(),
-                level: log::Level::DEBUG,
+                filter: "streamdeck-cli=trace,bevy_streamdeck=trace".into(),
+                level: log::Level::TRACE,
             },
             AssetPlugin::default(),
             ImagePlugin::default(),
@@ -23,10 +21,6 @@ fn main() {
         // Load assets
         .insert_resource(ImageCatalog::default())
         .add_systems(Startup, load_assets)
-        // Some Debug loggers
-        .add_systems(Update, log_button_presses)
-        .add_systems(Update, log_encoder_twists)
-        .add_systems(Update, log_encoder_presses)
         // Change the backlight level with a knob
         .add_systems(Update, change_backlight_level)
         // Set a button image on the streamdeck
@@ -46,44 +40,29 @@ fn load_assets(asset_server: Res<AssetServer>, mut image_catalog: ResMut<ImageCa
 
 fn set_button_pumpkin(
     image_catalog: Res<ImageCatalog>,
-    mut ev_streamdeck: EventWriter<StreamDeckEvent>,
+    mut button_image: ResMut<streamdeck::ButtonImage>,
 ) {
+    info!("Setting pumpkin image");
     if let Some(pumpkin_handle) = image_catalog.handles.get("pumpkin") {
-        ev_streamdeck.send(StreamDeckEvent::ButtonSetImage(pumpkin_handle.clone()))
-    }
-}
-
-fn log_button_presses(buttons: Res<Input<StreamDeckButton>>) {
-    if buttons.just_pressed(StreamDeckButton(0)) {
-        info!("Button 0 just pressed!");
-    }
-}
-
-fn log_encoder_twists(encoders: Res<Axis<StreamDeckEncoder>>) {
-    if encoders.is_changed() {
-        info!(
-            "Knob 0 value: {:?}",
-            encoders.get_unclamped(StreamDeckEncoder(0))
-        );
-    }
-}
-
-fn log_encoder_presses(encoders: Res<Input<StreamDeckEncoder>>) {
-    if encoders.just_pressed(StreamDeckEncoder(0)) {
-        info!("Encoder 0 just pressed!");
+        *button_image = streamdeck::ButtonImage(6, pumpkin_handle.clone());
     }
 }
 
 fn change_backlight_level(
-    mut brightness: ResMut<StreamDeckBrightness>,
-    encoders: Res<Axis<StreamDeckEncoder>>,
+    mut brightness: ResMut<streamdeck::Brightness>,
+    // encoders: Res<Axis<streamdeck::Encoder>>,
 ) {
-    if encoders.is_changed() {
-        let new_brightness = encoders
-            .get_unclamped(StreamDeckEncoder(0))
-            .unwrap_or(100.0)
-            .clamp(0.0, 100.0);
+    info!("Updating brightness");
+    *brightness = streamdeck::Brightness(100);
 
-        *brightness = StreamDeckBrightness(new_brightness as u8);
-    }
+    // if encoders.is_changed() {
+    //     let new_brightness = encoders
+    //         .get_unclamped(streamdeck::Encoder(0))
+    //         .unwrap_or(100.0)
+    //         .clamp(0.0, 100.0);
+    //
+    //     info!("New brightness: {}", new_brightness);
+    //
+    //     *brightness = streamdeck::Brightness(new_brightness as u8);
+    // }
 }
