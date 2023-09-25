@@ -1,3 +1,4 @@
+use bevy::asset::LoadState;
 use bevy::log::{self, LogPlugin};
 use bevy::prelude::*;
 use std::collections::HashMap;
@@ -10,7 +11,7 @@ fn main() {
         .add_plugins((
             MinimalPlugins,
             LogPlugin {
-                filter: "streamdeck-cli=trace,bevy_streamdeck=trace".into(),
+                filter: "streamdeck-cli=trace,bevy_streamdeck=debug".into(),
                 level: log::Level::TRACE,
             },
             AssetPlugin::default(),
@@ -39,30 +40,45 @@ fn load_assets(asset_server: Res<AssetServer>, mut image_catalog: ResMut<ImageCa
 }
 
 fn set_button_pumpkin(
+    mut ev_button: EventReader<streamdeck::ButtonInput>,
+    mut ev_command: EventWriter<streamdeck::Command>,
     image_catalog: Res<ImageCatalog>,
-    mut button_image: ResMut<streamdeck::ButtonImage>,
+    asset_server: Res<AssetServer>,
+    images: Res<Assets<Image>>,
 ) {
-    info!("Setting pumpkin image");
-    if let Some(pumpkin_handle) = image_catalog.handles.get("pumpkin") {
-        *button_image = streamdeck::ButtonImage(6, pumpkin_handle.clone());
+    for event in ev_button.iter() {
+        if let Some(pumpkin_handle) = image_catalog.handles.get("pumpkin") {
+            // Make sure the asset is loaded
+            if asset_server.get_load_state(pumpkin_handle) != LoadState::Loaded {
+                return;
+            }
+
+            let image_data = images
+                .get(pumpkin_handle)
+                .unwrap()
+                .clone()
+                .try_into_dynamic()
+                .unwrap();
+
+            ev_command.send(streamdeck::Command::SetButtonImage(
+                event.index(),
+                image_data,
+            ));
+        }
     }
 }
 
 fn change_backlight_level(
-    mut brightness: ResMut<streamdeck::Brightness>,
-    // encoders: Res<Axis<streamdeck::Encoder>>,
+    encoders: Res<Axis<streamdeck::Encoder>>,
+    mut ev_command: EventWriter<streamdeck::Command>,
 ) {
-    info!("Updating brightness");
-    *brightness = streamdeck::Brightness(100);
+    if encoders.is_changed() {
+        let new_brightness = encoders
+            .get_unclamped(streamdeck::Encoder(0))
+            .unwrap_or(100.0)
+            .clamp(0.0, 100.0);
 
-    // if encoders.is_changed() {
-    //     let new_brightness = encoders
-    //         .get_unclamped(streamdeck::Encoder(0))
-    //         .unwrap_or(100.0)
-    //         .clamp(0.0, 100.0);
-    //
-    //     info!("New brightness: {}", new_brightness);
-    //
-    //     *brightness = streamdeck::Brightness(new_brightness as u8);
-    // }
+        info!("New brightness: {}", new_brightness);
+        ev_command.send(streamdeck::Command::SetBrightness(new_brightness as u8))
+    }
 }

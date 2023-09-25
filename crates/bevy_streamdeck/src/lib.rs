@@ -2,9 +2,8 @@ pub mod streamdeck;
 mod system_input;
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 
-use bevy::asset::{HandleId, LoadState};
+use bevy::asset::HandleId;
 use bevy::input::InputSystem;
 use bevy::prelude::*;
 use bevy::tasks::{IoTaskPool, Task};
@@ -14,8 +13,7 @@ use image::DynamicImage;
 
 pub use elgato_streamdeck::StreamDeck as RawStreamDeck;
 
-use crate::streamdeck::Command;
-use streamdeck::{Brightness, Button, ButtonImage, Encoder};
+use crate::streamdeck::{Button, ButtonInput, Command, Encoder};
 
 #[derive(Default)]
 pub struct StreamDeckPlugin;
@@ -25,36 +23,12 @@ impl Plugin for StreamDeckPlugin {
         app.init_resource::<Input<Button>>()
             .init_resource::<Axis<Encoder>>()
             .init_resource::<Input<Encoder>>()
-            .init_resource::<Brightness>()
-            .init_resource::<ButtonImage>()
             .init_resource::<ImageCache>()
+            .add_event::<Command>()
+            .add_event::<ButtonInput>()
             .add_systems(PreStartup, multi_threaded_streamdeck)
-            // .add_systems(PreUpdate, system_input::inputs.before(InputSystem))
-            .add_systems(Update, system_backlight)
-            .add_systems(Update, system_button_image);
-    }
-}
-
-fn system_backlight(deck_commands: ResMut<StreamDeckCommands>, brightness: Res<Brightness>) {
-    // if brightness.is_changed() {
-    trace!("Setting brightness");
-    deck_commands
-        // .send(Command::SetBrightness(brightness.0))
-        .send(Command::SetBrightness(0))
-        .expect("Could not set backlight brightness");
-    // }
-}
-
-fn system_button_image(
-    deck_commands: ResMut<StreamDeckCommands>,
-    button_image: Res<ButtonImage>,
-    asset_server: Res<AssetServer>,
-) {
-    if button_image.is_changed() {
-        let ButtonImage(index, handle) = button_image.into_inner();
-        deck_commands
-            .send(Command::SetButtonImage(*index, handle.clone()))
-            .expect("Could not set backlight brightness");
+            .add_systems(PreUpdate, system_input::inputs.before(InputSystem))
+            .add_systems(PreUpdate, forward_commands);
     }
 }
 
@@ -70,29 +44,30 @@ struct StreamDeckTask(Task<()>);
 #[derive(Resource, Deref, DerefMut, Debug, Default)]
 struct ImageCache(HashMap<HandleId, DynamicImage>);
 
-fn multi_threaded_streamdeck(
-    mut commands: Commands,
-    images: Res<Assets<Image>>,
-    asset_server: Res<AssetServer>,
-    mut image_cache: ResMut<ImageCache>,
+fn forward_commands(
+    deck_commands: ResMut<StreamDeckCommands>,
+    mut ev_command: EventReader<Command>,
 ) {
+    for command in ev_command.iter() {
+        deck_commands
+            .0
+            .send(command.clone())
+            .expect("Could not send command");
+    }
+}
+
+fn multi_threaded_streamdeck(mut commands: Commands) {
     // TODO: these should probably be bounded...
     let (inputs_tx, inputs_rx) = crossbeam_channel::unbounded::<StreamDeckInput>();
     let (commands_tx, commands_rx) = crossbeam_channel::unbounded::<Command>();
-    let inner_commands_tx = commands_tx.clone();
 
-    // commands_tx
-    //     .clone()
-    //     .send(Command::SetBrightness(0))
-    //     .expect("TODO: panic message");
-
-    // commands.insert_resource(StreamDeckTask());
     commands.insert_resource(StreamDeckInputs(inputs_rx));
     commands.insert_resource(StreamDeckCommands(commands_tx));
 
     let pool = IoTaskPool::get();
-    let _results = pool.spawn(async move {
+    let task = pool.spawn(async move {
         let streamdeck = get_device();
+        streamdeck.reset().expect("Could not reset streamdeck");
         loop {
             // Handle incoming commands
             if !commands_rx.is_empty() {
@@ -101,48 +76,18 @@ fn multi_threaded_streamdeck(
             if let Ok(command) = commands_rx.try_recv() {
                 trace!("Got command: {:?}", command);
                 match command {
+                    Command::Shutdown => {
+                        streamdeck.reset().expect("Could not reset device");
+                    }
                     Command::SetBrightness(brightness) => {
                         streamdeck
                             .set_brightness(brightness)
                             .expect("Could not set brightness");
                     }
-                    Command::SetButtonImage(button_index, image_handle) => {
-                        // Get the image from the cache, otherwise convert it and save to cache
-                        match image_cache.get(&image_handle.id()) {
-                            Some(image) => {
-                                trace!("Image cache hit");
-
-                                streamdeck
-                                    .set_button_image(button_index, image.clone())
-                                    .expect("Unable to write button image");
-                            }
-                            None => {
-                                trace!("Image cache miss");
-
-                                loop {
-                                    if asset_server.get_load_state(image_handle.clone())
-                                        == LoadState::Loaded
-                                    {
-                                        break;
-                                    }
-                                }
-
-                                // Convert image
-                                let image = images
-                                    .get(&image_handle)
-                                    .expect("Image already loaded")
-                                    .clone()
-                                    .try_into_dynamic()
-                                    .expect("Could not convert image");
-
-                                image_cache.insert(image_handle.id(), image);
-
-                                // Add it to the image cache
-                                inner_commands_tx
-                                    .send(Command::SetButtonImage(button_index, image_handle))
-                                    .expect("Could not send command");
-                            }
-                        };
+                    Command::SetButtonImage(button_index, image) => {
+                        streamdeck
+                            .set_button_image(button_index, image.clone())
+                            .expect("Unable to write button image");
                     }
                 }
             }
@@ -157,6 +102,8 @@ fn multi_threaded_streamdeck(
             }
         }
     });
+
+    commands.insert_resource(StreamDeckTask(task));
 }
 
 // Get the StreamDeck device

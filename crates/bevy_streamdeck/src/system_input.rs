@@ -3,7 +3,8 @@ use bevy::log::trace;
 use bevy::prelude::*;
 use elgato_streamdeck::StreamDeckInput;
 
-use crate::{Button, Encoder, StreamDeckInputs};
+use crate::streamdeck::{Button, ButtonInput, ButtonState, Encoder};
+use crate::StreamDeckInputs;
 
 // Handle input events from the StreamDeck and convert them to Input<T>
 pub fn inputs(
@@ -11,13 +12,13 @@ pub fn inputs(
     mut button_inputs: ResMut<Input<Button>>,
     mut encoder_axis: ResMut<Axis<Encoder>>,
     mut encoder_inputs: ResMut<Input<Encoder>>,
+    mut ev_buttoninput: EventWriter<ButtonInput>,
 ) {
-    trace!("Handling inputs");
-    for input in inputs.0.try_iter() {
-        // Clear all the events
-        button_inputs.clear();
-        encoder_inputs.clear();
+    // Clear all the events
+    button_inputs.clear();
+    encoder_inputs.clear();
 
+    for input in inputs.0.try_iter() {
         match input {
             StreamDeckInput::NoData => (),
             StreamDeckInput::ButtonStateChange(buttons) => {
@@ -27,12 +28,14 @@ pub fn inputs(
                     // If the input is currently pressed, and event is not pressed, release the input
                     if button_inputs.pressed(button) && !(*button_pressed) {
                         button_inputs.release(button);
+                        ev_buttoninput.send(ButtonInput::new(button, ButtonState::Released));
                         continue;
                     }
 
                     // If the button is not pressed, and the event says that is is, press the input
                     if !button_inputs.pressed(button) && *button_pressed {
                         button_inputs.press(button);
+                        ev_buttoninput.send(ButtonInput::new(button, ButtonState::Pressed));
                         continue;
                     }
                 }
