@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use bevy::tasks::{IoTaskPool, Task};
 use crossbeam_channel::{Receiver, Sender};
 use elgato_streamdeck::{info::Kind as RawKind, list_devices, new_hidapi, StreamDeckInput};
-use image::DynamicImage;
+use image::{DynamicImage, ImageBuffer};
 
 pub use elgato_streamdeck::StreamDeck as RawStreamDeck;
 
@@ -88,6 +88,14 @@ fn multi_threaded_streamdeck(mut commands: Commands) {
                         streamdeck
                             .set_button_image(button_index, image.clone())
                             .expect("Unable to write button image");
+                    }
+                    Command::SetButtonColor(button_index, color) => {
+                        // Create the image
+                        let image = ImageBuffer::from_pixel(72, 72, color);
+
+                        streamdeck
+                            .set_button_image(button_index, DynamicImage::from(image.clone()))
+                            .expect("Unable to write color button image");
                     }
                 }
             }

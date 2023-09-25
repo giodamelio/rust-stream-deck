@@ -1,6 +1,7 @@
 use bevy::asset::LoadState;
 use bevy::log::{self, LogPlugin};
 use bevy::prelude::*;
+use rand::Rng;
 use std::collections::HashMap;
 
 use bevy_streamdeck::{streamdeck, StreamDeckPlugin};
@@ -22,11 +23,26 @@ fn main() {
         // Load assets
         .insert_resource(ImageCatalog::default())
         .add_systems(Startup, load_assets)
+        .add_systems(Startup, spawn_apps)
         // Change the backlight level with a knob
         .add_systems(Update, change_backlight_level)
         // Set a button image on the streamdeck
-        .add_systems(Update, set_button_pumpkin)
+        .add_systems(Update, set_button_random_color)
         .run();
+}
+
+#[derive(Component)]
+struct Enabled(bool);
+
+#[derive(Bundle)]
+struct DeckApp {
+    enabled: Enabled,
+}
+
+fn spawn_apps(mut commands: Commands) {
+    commands.spawn(DeckApp {
+        enabled: Enabled(true),
+    });
 }
 
 #[derive(Resource, Default)]
@@ -39,7 +55,7 @@ fn load_assets(asset_server: Res<AssetServer>, mut image_catalog: ResMut<ImageCa
     image_catalog.handles.insert("pumpkin", pumpkin_handle);
 }
 
-fn set_button_pumpkin(
+fn set_button_random_color(
     mut ev_button: EventReader<streamdeck::ButtonInput>,
     mut ev_command: EventWriter<streamdeck::Command>,
     image_catalog: Res<ImageCatalog>,
@@ -53,16 +69,17 @@ fn set_button_pumpkin(
                 return;
             }
 
-            let image_data = images
-                .get(pumpkin_handle)
-                .unwrap()
-                .clone()
-                .try_into_dynamic()
-                .unwrap();
+            if event.state != streamdeck::ButtonState::Released {
+                return;
+            }
 
-            ev_command.send(streamdeck::Command::SetButtonImage(
+            let mut rng = rand::thread_rng();
+            let mut color = [0u8; 3];
+            rng.fill(&mut color);
+
+            ev_command.send(streamdeck::Command::SetButtonColor(
                 event.index(),
-                image_data,
+                color.into(),
             ));
         }
     }

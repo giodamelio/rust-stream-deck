@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use image::{DynamicImage, GenericImageView};
+use image::{DynamicImage, GenericImageView, Rgb};
 use std::fmt::{Debug, Formatter};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -24,7 +24,7 @@ impl ButtonInput {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ButtonState {
     Pressed,
     Released,
@@ -35,6 +35,7 @@ pub enum Command {
     Shutdown,
     SetBrightness(u8),
     SetButtonImage(u8, DynamicImage),
+    SetButtonColor(u8, Rgb<u8>),
 }
 
 impl Debug for Command {
@@ -52,6 +53,13 @@ impl Debug for Command {
                     "SetButtonImage(button_index = {}, image_size = {:?})",
                     index,
                     data.dimensions()
+                )
+            }
+            Command::SetButtonColor(index, color) => {
+                write!(
+                    f,
+                    "SetButtonColor(button_index = {}, color = {:?})",
+                    index, color
                 )
             }
         }
