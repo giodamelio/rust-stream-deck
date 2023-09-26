@@ -1,9 +1,9 @@
-use bevy::input::{Axis, Input};
+use bevy::input::{Axis, ButtonState, Input};
 use bevy::log::trace;
 use bevy::prelude::*;
 use elgato_streamdeck::StreamDeckInput;
 
-use crate::streamdeck::{Button, ButtonInput, ButtonState, Encoder};
+use crate::streamdeck::{Button, ButtonInput, Encoder};
 use crate::StreamDeckInputs;
 
 // Handle input events from the StreamDeck and convert them to Input<T>

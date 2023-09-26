@@ -1,10 +1,11 @@
 use bevy::asset::LoadState;
+use bevy::input::ButtonState;
 use bevy::log::{self, LogPlugin};
 use bevy::prelude::*;
 use rand::Rng;
 use std::collections::HashMap;
 
-use bevy_streamdeck::{streamdeck, StreamDeckPlugin};
+use bevy_streamdeck::{streamdeck, StreamDeckKind, StreamDeckPlugin};
 
 fn main() {
     App::new()
@@ -20,6 +21,8 @@ fn main() {
         ))
         // StreamDeck Plugin
         .add_plugins(StreamDeckPlugin)
+        // Keep track of which app we are using
+        .add_state::<AppState>()
         // Load assets
         .insert_resource(ImageCatalog::default())
         .add_systems(Startup, load_assets)
@@ -28,7 +31,45 @@ fn main() {
         .add_systems(Update, change_backlight_level)
         // Set a button image on the streamdeck
         .add_systems(Update, set_button_random_color)
+        // Set the systems for our states
+        .add_systems(OnEnter(AppState::Welcome), welcome_setup)
+        .add_systems(Update, (welcome_update).run_if(in_state(AppState::Welcome)))
         .run();
+}
+
+#[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
+enum AppState {
+    #[default]
+    Welcome,
+    Settings,
+    AppSelector,
+    App,
+}
+
+// Make all the keys grey and say welcome
+fn welcome_setup(mut ev_command: EventWriter<streamdeck::Command>, deck_kind: Res<StreamDeckKind>) {
+    let color = [44, 44, 44];
+
+    info!("Screen Size: {:?}", deck_kind.lcd_strip_size());
+    for i in 0..deck_kind.key_count() {
+        ev_command.send(streamdeck::Command::SetButtonColor(i, color.into()));
+    }
+    ev_command.send(streamdeck::Command::LCDCenterText("YAY".to_string()));
+
+    info!("WELCOME");
+}
+
+fn welcome_update(
+    mut ev_button: EventReader<streamdeck::ButtonInput>,
+    // mut ev_command: EventWriter<streamdeck::Command>,
+) {
+    for event in ev_button.iter() {
+        if event.state != ButtonState::Released {
+            continue;
+        }
+
+        info!("Button Pressed!");
+    }
 }
 
 #[derive(Component)]
@@ -69,7 +110,7 @@ fn set_button_random_color(
                 return;
             }
 
-            if event.state != streamdeck::ButtonState::Released {
+            if event.state != ButtonState::Released {
                 return;
             }
 
@@ -95,7 +136,6 @@ fn change_backlight_level(
             .unwrap_or(100.0)
             .clamp(0.0, 100.0);
 
-        info!("New brightness: {}", new_brightness);
         ev_command.send(streamdeck::Command::SetBrightness(new_brightness as u8))
     }
 }

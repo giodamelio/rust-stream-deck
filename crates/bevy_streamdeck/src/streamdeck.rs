@@ -1,6 +1,8 @@
+use std::fmt::{Debug, Formatter};
+
+use bevy::input::ButtonState;
 use bevy::prelude::*;
 use image::{DynamicImage, GenericImageView, Rgb};
-use std::fmt::{Debug, Formatter};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Button(pub u8);
@@ -24,18 +26,13 @@ impl ButtonInput {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ButtonState {
-    Pressed,
-    Released,
-}
-
 #[derive(Event, Clone)]
 pub enum Command {
     Shutdown,
     SetBrightness(u8),
     SetButtonImage(u8, DynamicImage),
     SetButtonColor(u8, Rgb<u8>),
+    LCDCenterText(String),
 }
 
 impl Debug for Command {
@@ -61,6 +58,9 @@ impl Debug for Command {
                     "SetButtonColor(button_index = {}, color = {:?})",
                     index, color
                 )
+            }
+            Command::LCDCenterText(text) => {
+                write!(f, "LCDCenterText(text = {})", text)
             }
         }
     }
