@@ -105,6 +105,11 @@ fn multi_threaded_streamdeck(mut commands: Commands) {
                             .set_button_image(button_index, image.clone())
                             .expect("Unable to write button image");
                     }
+                    Command::SetButtonImageData(button_index, image) => {
+                        streamdeck
+                            .write_image(button_index, image.as_slice())
+                            .expect("Unable to write button image data");
+                    }
                     Command::SetButtonColor(button_index, color) => {
                         // Create the image
                         let image = ImageBuffer::from_pixel(72, 72, color);

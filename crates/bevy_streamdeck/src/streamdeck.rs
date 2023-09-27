@@ -31,6 +31,7 @@ pub enum Command {
     Shutdown,
     SetBrightness(u8),
     SetButtonImage(u8, DynamicImage),
+    SetButtonImageData(u8, Vec<u8>),
     SetButtonColor(u8, Rgb<u8>),
     LCDCenterText(String),
 }
@@ -50,6 +51,14 @@ impl Debug for Command {
                     "SetButtonImage(button_index = {}, image_size = {:?})",
                     index,
                     data.dimensions()
+                )
+            }
+            Command::SetButtonImageData(index, data) => {
+                write!(
+                    f,
+                    "SetButtonImageData(button_index = {}, data_length = {})",
+                    index,
+                    data.len()
                 )
             }
             Command::SetButtonColor(index, color) => {

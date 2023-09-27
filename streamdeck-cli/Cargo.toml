@@ -9,3 +9,4 @@ edition = "2021"
 bevy = { version = "0.11.2", default-features = false, features = ["bevy_asset", "bevy_render", "png"] }
 bevy_streamdeck = { version = "0.1.0", path = "../crates/bevy_streamdeck" }
 rand = "0.8.5"
+tiny-skia = "0.11.1"

@@ -4,6 +4,7 @@ use bevy::log::{self, LogPlugin};
 use bevy::prelude::*;
 use rand::Rng;
 use std::collections::HashMap;
+use tiny_skia::{PathBuilder, Pixmap};
 
 use bevy_streamdeck::{streamdeck, StreamDeckKind, StreamDeckPlugin};
 
@@ -55,6 +56,11 @@ fn welcome_setup(mut ev_command: EventWriter<streamdeck::Command>, deck_kind: Re
         ev_command.send(streamdeck::Command::SetButtonColor(i, color.into()));
     }
     ev_command.send(streamdeck::Command::LCDCenterText("YAY".to_string()));
+
+    // Try out tiny-skia
+    let mut pixmap = Pixmap::new(72, 72).unwrap();
+    pixmap.fill(tiny_skia::Color::from_rgba8(255, 0, 0, 255));
+    ev_command.send(streamdeck::Command::SetButtonImageData(0, pixmap.take()));
 
     info!("WELCOME");
 }
