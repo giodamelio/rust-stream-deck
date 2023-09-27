@@ -4,4 +4,5 @@ members = [
     "streamdeck-cli",
     "crates/legacy",
     "crates/bevy_streamdeck",
+    "crates/streamdeck",
 ]

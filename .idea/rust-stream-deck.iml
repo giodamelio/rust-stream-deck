@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/bevy_streamdeck/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/legacy/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/streamdeck-cli/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/streamdeck/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/crates/legacy/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
