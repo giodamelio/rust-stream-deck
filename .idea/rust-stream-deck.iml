@@ -9,6 +9,8 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/streamdeck/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/crates/legacy/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/bevy_streamdeck/tmp" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/streamdeck/tmp" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

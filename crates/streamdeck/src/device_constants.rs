@@ -1,3 +1,6 @@
+use binrw::prelude::*;
+use binrw::NullString;
+
 pub const VENDOR_ID: u16 = 0x0FD9;
 
 pub const PRODUCT_ID_ORIGINAL: u16 = 0x0060;
@@ -21,3 +24,22 @@ pub const PRODUCT_ID_ALL: [u16; 9] = [
     PRODUCT_ID_PEDAL,
     PRODUCT_ID_PLUS,
 ];
+
+// Feature Reports
+#[derive(Debug)]
+#[binrw]
+pub struct FeatureReportFirmwareVersion {
+    feature_id: u8,
+    length: u8,
+    // Remove 4 junk bytes
+    #[br(pad_before = 4)]
+    pub version: NullString,
+}
+
+#[derive(Debug)]
+#[binrw]
+pub struct FeatureReportSerialNumber {
+    feature_id: u8,
+    length: u8,
+    pub serial: NullString,
+}

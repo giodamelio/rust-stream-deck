@@ -11,6 +11,8 @@ pub enum StreamDeckError {
     DeviceNotConnected,
     #[error("hid error: {0}")]
     HidError(#[from] HidError),
+    #[error("binrw error: {0}")]
+    BinrwError(#[from] binrw::Error),
 }
 
 pub type StreamDeckResult<T> = Result<T, StreamDeckError>;
