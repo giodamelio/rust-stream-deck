@@ -1,8 +1,0 @@
-[workspace]
-resolver = "2"
-members = [
-    "streamdeck-cli",
-    "crates/legacy",
-    "crates/bevy_streamdeck",
-    "crates/streamdeck",
-]
