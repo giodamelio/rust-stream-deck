@@ -11,4 +11,8 @@
   ];
 
   difftastic.enable = true;
+
+  enterTest = ''
+    cargo test
+  '';
 }
