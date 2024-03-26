@@ -10,7 +10,7 @@ use bevy::{
     MinimalPlugins,
 };
 
-use crate::streamdeck::{EncoderPosition, StreamDeckInput, StreamDeckPlugin};
+use crate::streamdeck::{EncoderPosition, StreamDeckButton, StreamDeckEncoder, StreamDeckPlugin};
 
 fn main() -> anyhow::Result<()> {
     pretty_env_logger::try_init()?;
@@ -32,20 +32,23 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn log_buttons(button: Res<ButtonInput<StreamDeckInput>>) {
-    if button.just_pressed(StreamDeckInput::Button(0)) {
+fn log_buttons(
+    button: Res<ButtonInput<StreamDeckButton>>,
+    encoder: Res<ButtonInput<StreamDeckEncoder>>,
+) {
+    if button.just_pressed(StreamDeckButton(0)) {
         log::info!("Button 0 pressed");
     }
 
-    if button.just_pressed(StreamDeckInput::Encoder(0)) {
+    if encoder.just_pressed(StreamDeckEncoder(0)) {
         log::info!("Encoder 0 pressed");
     }
 }
 
 fn log_encoders(knob: Res<EncoderPosition>) {
-    log::info!("Knob: {:?}", knob.get_position(StreamDeckInput::Encoder(0)));
+    log::info!("Knob: {:?}", knob.get_position(StreamDeckEncoder(0)));
     log::info!(
         "Knob Clamped: {:?}",
-        knob.get_position_clamped(StreamDeckInput::Encoder(0), 0, 100)
+        knob.get_position_clamped(StreamDeckEncoder(0), 0, 100)
     );
 }
