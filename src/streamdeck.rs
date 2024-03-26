@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use bevy::app::{Plugin, PreStartup};
 use elgato_streamdeck::StreamDeck;
+use log::debug;
 
 pub struct StreamDeckPlugin;
 
@@ -24,7 +25,14 @@ fn get_exactly_one_streamdeck() -> Result<StreamDeck> {
         .first()
         .ok_or(anyhow!("Only exactly one StreamDeck at a time"))?;
 
+    debug!("Found StreamDeck, Kind: {:?}, Serial: {:?}", kind, serial);
+
     let device = StreamDeck::connect(&hid, *kind, serial)?;
+
+    debug!(
+        "Connected to StreamDeck, Firmware Version: {}",
+        device.firmware_version()?
+    );
 
     Ok(device)
 }

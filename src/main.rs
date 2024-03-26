@@ -3,7 +3,6 @@ mod streamdeck;
 use bevy::{
     app::{App, Update},
     asset::AssetPlugin,
-    log::LogPlugin,
     render::texture::ImagePlugin,
     MinimalPlugins,
 };
@@ -11,12 +10,13 @@ use bevy::{
 use crate::streamdeck::StreamDeckPlugin;
 
 fn main() -> anyhow::Result<()> {
+    pretty_env_logger::try_init()?;
+
     App::new()
         .add_plugins((
             MinimalPlugins,
             AssetPlugin::default(),
             ImagePlugin::default(),
-            LogPlugin::default(),
         ))
         .add_plugins(StreamDeckPlugin)
         .add_systems(Update, log)
@@ -26,5 +26,5 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn log() {
-    // println!("HELLO BEVY");
+    // info!("Hello Bevy!");
 }
