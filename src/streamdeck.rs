@@ -7,7 +7,7 @@ use bevy::{
     tasks::IoTaskPool,
 };
 use crossbeam_channel::{unbounded, Receiver, Sender};
-use elgato_streamdeck::{StreamDeck, StreamDeckInput as ELStreamDeckInput};
+use elgato_streamdeck::{StreamDeck as ELStreamDeck, StreamDeckInput as ELStreamDeckInput};
 use tracing::{debug, trace};
 
 pub struct StreamDeckPlugin;
@@ -24,6 +24,12 @@ impl Plugin for StreamDeckPlugin {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct StreamDeckButton(pub usize);
+
+impl From<StreamDeckButton> for u8 {
+    fn from(button: StreamDeckButton) -> Self {
+        button.0 as Self
+    }
+}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct StreamDeckEncoder(pub usize);
@@ -59,19 +65,55 @@ struct StreamDeckInputListener {
     inputs_rx: Receiver<ELStreamDeckInput>,
 }
 
+#[derive(Debug, Resource)]
+pub struct StreamDeck {
+    outputs_tx: Sender<StreamDeckAction>,
+}
+
+impl StreamDeck {
+    pub fn set_backlight(&mut self, brightness: u8) -> Result<()> {
+        self.outputs_tx
+            .try_send(StreamDeckAction::SetBacklight(brightness))?;
+        Ok(())
+    }
+
+    pub fn button_set_color(
+        &mut self,
+        button: StreamDeckButton,
+        color: image::Rgb<u8>,
+    ) -> Result<()> {
+        self.outputs_tx
+            .try_send(StreamDeckAction::ButtonSetColor(button, color))?;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+enum StreamDeckAction {
+    SetBacklight(u8),
+    ButtonSetColor(StreamDeckButton, image::Rgb<u8>),
+}
+
 // This system owns the connection to the StreamDeck
 // It communicates to the rest of the application via channels
 fn listener(mut commands: Commands) {
     let (inputs_tx, inputs_rx) = unbounded::<ELStreamDeckInput>();
+    let (outputs_tx, outputs_rx) = unbounded::<StreamDeckAction>();
 
     let taskpool = IoTaskPool::get();
-    taskpool.spawn(listener_task(inputs_tx)).detach();
+    taskpool
+        .spawn(listener_task(inputs_tx, outputs_rx))
+        .detach();
 
     commands.insert_resource(StreamDeckInputListener { inputs_rx });
+    commands.insert_resource(StreamDeck { outputs_tx });
 }
 
 #[tracing::instrument]
-async fn listener_task(inputs_tx: Sender<ELStreamDeckInput>) -> Result<()> {
+async fn listener_task(
+    inputs_tx: Sender<ELStreamDeckInput>,
+    outputs_rx: Receiver<StreamDeckAction>,
+) -> Result<()> {
     let deck = get_exactly_one_streamdeck()?;
 
     loop {
@@ -79,6 +121,25 @@ async fn listener_task(inputs_tx: Sender<ELStreamDeckInput>) -> Result<()> {
             // Throw away no data events
             ELStreamDeckInput::NoData => (),
             input => inputs_tx.try_send(input)?,
+        };
+
+        if let Ok(action) = outputs_rx.try_recv() {
+            match action {
+                StreamDeckAction::SetBacklight(brightness) => {
+                    let _ = deck.set_brightness(brightness);
+                }
+                StreamDeckAction::ButtonSetColor(button, color) => {
+                    // Create white image
+                    let mut img = image::ImageBuffer::new(72, 72);
+                    for pixel in img.pixels_mut() {
+                        *pixel = color;
+                    }
+                    let image = image::DynamicImage::ImageRgb8(img);
+
+                    let result = deck.set_button_image(button.into(), image);
+                    debug!("Color Result: {:?}", result);
+                }
+            };
         };
     }
 }
@@ -135,7 +196,7 @@ fn recieve_inputs(
 
 // Get the StreamDeck device
 // Error if there is more then one available
-fn get_exactly_one_streamdeck() -> Result<StreamDeck> {
+fn get_exactly_one_streamdeck() -> Result<ELStreamDeck> {
     let hid = elgato_streamdeck::new_hidapi()?;
     let devices = elgato_streamdeck::list_devices(&hid);
 
@@ -145,7 +206,7 @@ fn get_exactly_one_streamdeck() -> Result<StreamDeck> {
 
     debug!("Found StreamDeck, Kind: {:?}, Serial: {:?}", kind, serial);
 
-    let device = StreamDeck::connect(&hid, *kind, serial)?;
+    let device = ELStreamDeck::connect(&hid, *kind, serial)?;
 
     debug!(
         "Connected to StreamDeck, Firmware Version: {}",

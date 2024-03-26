@@ -1,16 +1,15 @@
 mod streamdeck;
 
-use std::time::Duration;
-
 use bevy::{
     asset::AssetPlugin,
-    prelude::{App, ButtonInput, IntoSystemConfigs, Res, Update},
+    prelude::{App, ButtonInput, Res, ResMut, Startup, Update},
     render::texture::ImagePlugin,
-    time::common_conditions::on_timer,
     MinimalPlugins,
 };
 
-use crate::streamdeck::{EncoderPosition, StreamDeckButton, StreamDeckEncoder, StreamDeckPlugin};
+use crate::streamdeck::{
+    EncoderPosition, StreamDeck, StreamDeckButton, StreamDeckEncoder, StreamDeckPlugin,
+};
 
 fn main() -> anyhow::Result<()> {
     pretty_env_logger::try_init()?;
@@ -22,33 +21,28 @@ fn main() -> anyhow::Result<()> {
             ImagePlugin::default(),
         ))
         .add_plugins(StreamDeckPlugin)
-        .add_systems(Update, log_buttons)
-        .add_systems(
-            Update,
-            log_encoders.run_if(on_timer(Duration::from_secs(1))),
-        )
+        .add_systems(Startup, set_brightness)
+        .add_systems(Update, random_colors)
         .run();
 
     Ok(())
 }
 
-fn log_buttons(
-    button: Res<ButtonInput<StreamDeckButton>>,
-    encoder: Res<ButtonInput<StreamDeckEncoder>>,
-) {
-    if button.just_pressed(StreamDeckButton(0)) {
-        log::info!("Button 0 pressed");
+fn random_colors(mut deck: ResMut<StreamDeck>, button: Res<ButtonInput<StreamDeckButton>>) {
+    let b = StreamDeckButton(0);
+    if button.just_pressed(b) {
+        log::info!("Random Color Incoming");
+        let color = image::Rgb::<u8>([rand::random(), rand::random(), rand::random()]);
+        let _ = deck.button_set_color(b, color);
     }
 
-    if encoder.just_pressed(StreamDeckEncoder(0)) {
-        log::info!("Encoder 0 pressed");
+    if button.just_pressed(StreamDeckButton(1)) {
+        log::info!("Setting brightness to max");
+        let _ = deck.set_backlight(100);
     }
 }
 
-fn log_encoders(knob: Res<EncoderPosition>) {
-    log::info!("Knob: {:?}", knob.get_position(StreamDeckEncoder(0)));
-    log::info!(
-        "Knob Clamped: {:?}",
-        knob.get_position_clamped(StreamDeckEncoder(0), 0, 100)
-    );
+fn set_brightness(mut deck: ResMut<StreamDeck>) {
+    log::info!("Setting brightness to max");
+    let _ = deck.set_backlight(100);
 }
