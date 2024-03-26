@@ -1,3 +1,5 @@
+mod streamdeck;
+
 use bevy::{
     app::{App, Update},
     asset::AssetPlugin,
@@ -6,7 +8,9 @@ use bevy::{
     MinimalPlugins,
 };
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+use crate::streamdeck::StreamDeckPlugin;
+
+fn main() -> anyhow::Result<()> {
     App::new()
         .add_plugins((
             MinimalPlugins,
@@ -14,6 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ImagePlugin::default(),
             LogPlugin::default(),
         ))
+        .add_plugins(StreamDeckPlugin)
         .add_systems(Update, log)
         .run();
 
@@ -21,5 +26,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn log() {
-    println!("HELLO BEVY");
+    // println!("HELLO BEVY");
 }
