@@ -9,4 +9,6 @@
   packages = with pkgs; [
     libusb
   ];
+
+  difftastic.enable = true;
 }
