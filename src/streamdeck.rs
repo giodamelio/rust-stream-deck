@@ -127,6 +127,9 @@ async fn listener_task(
             match action {
                 StreamDeckAction::SetBacklight(brightness) => {
                     let _ = deck.set_brightness(brightness);
+                    if let Err(e) = deck.set_brightness(brightness) {
+                        debug!("Failed to set_brightness: {:?}", e);
+                    }
                 }
                 StreamDeckAction::ButtonSetColor(button, color) => {
                     // Create white image
@@ -136,8 +139,9 @@ async fn listener_task(
                     }
                     let image = image::DynamicImage::ImageRgb8(img);
 
-                    let result = deck.set_button_image(button.into(), image);
-                    debug!("Color Result: {:?}", result);
+                    if let Err(e) = deck.set_button_image(button.into(), image) {
+                        debug!("Failed to button_set_color: {:?}", e);
+                    }
                 }
             };
         };
