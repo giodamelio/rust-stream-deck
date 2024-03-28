@@ -1,3 +1,4 @@
+mod sound;
 mod streamdeck;
 
 use bevy::{
@@ -7,6 +8,7 @@ use bevy::{
     MinimalPlugins,
 };
 
+use crate::sound::SoundPlugin;
 use crate::streamdeck::{StreamDeck, StreamDeckButton, StreamDeckPlugin};
 
 fn main() -> anyhow::Result<()> {
@@ -19,6 +21,7 @@ fn main() -> anyhow::Result<()> {
             ImagePlugin::default(),
         ))
         .add_plugins(StreamDeckPlugin)
+        .add_plugins(SoundPlugin)
         .add_systems(Startup, set_brightness)
         .add_systems(Update, random_colors)
         .run();
