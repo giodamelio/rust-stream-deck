@@ -18,17 +18,17 @@ fn main() -> anyhow::Result<()> {
         .add_plugins(StreamDeckPlugin)
         .add_plugins(SoundPlugin)
         .add_systems(Startup, set_brightness)
-        .add_systems(Update, (random_colors, print_outputs))
+        .add_systems(Update, random_colors)
         .run();
 
     Ok(())
 }
 
-fn print_outputs(outputs: Query<(&Output, &Name)>) {
-    for out in &outputs {
-        tracing::debug!("Got output: {:?}", out);
-    }
-}
+// fn print_outputs(outputs: Query<(&Output, &Name)>) {
+//     for out in &outputs {
+//         tracing::debug!("Got output: {:?}", out);
+//     }
+// }
 
 fn random_colors(mut deck: ResMut<StreamDeck>, button: Res<ButtonInput<StreamDeckButton>>) {
     let b = StreamDeckButton(0);
