@@ -1227,6 +1227,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-primitive-derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba7795da175654fe16979af73f81f26a8ea27638d8d9823d317016888a63dc4c"
+dependencies = [
+ "num-traits",
+ "quote",
+ "syn 2.0.55",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2237,6 +2248,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43d84d1d7a6ac92673717f9f6d1518374ef257669c24ebc5ac25d5033828be58"
 
 [[package]]
+name = "pulseaudio"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbcf2caded5203e635b664f829fcfc2a3baebcceba31fc6e8bd47f231411f89d"
+dependencies = [
+ "bitflags 2.5.0",
+ "byteorder",
+ "enum-primitive-derive",
+ "num-traits",
+ "thiserror",
+]
+
+[[package]]
 name = "qoi"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2408,6 +2432,7 @@ dependencies = [
  "image",
  "log",
  "pretty_env_logger",
+ "pulseaudio",
  "rand",
  "tracing",
 ]
