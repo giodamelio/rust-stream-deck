@@ -8,10 +8,7 @@
 
   packages = with pkgs; [
     libusb
-    pipewire
   ];
-
-  env.LIBCLANG_PATH = "${pkgs.llvmPackages_16.libclang.lib}/lib";
 
   difftastic.enable = true;
 

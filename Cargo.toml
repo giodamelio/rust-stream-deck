@@ -11,7 +11,6 @@ crossbeam-channel = "0.5.12"
 elgato-streamdeck = "0.5.0"
 image = "=0.24.6" # I hate this
 log = "0.4.21"
-pipewire = "0.8.0"
 pretty_env_logger = "0.5.0"
 rand = "0.8.5"
 tracing = { version = "0.1.40", features = ["log"] }
