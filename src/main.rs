@@ -1,14 +1,9 @@
 mod sound;
 mod streamdeck;
 
-use bevy::{
-    asset::AssetPlugin,
-    prelude::{App, ButtonInput, Res, ResMut, Startup, Update},
-    render::texture::ImagePlugin,
-    MinimalPlugins,
-};
+use bevy::{asset::AssetPlugin, prelude::*, render::texture::ImagePlugin, MinimalPlugins};
 
-use crate::sound::SoundPlugin;
+use crate::sound::{Name, Output, SoundPlugin};
 use crate::streamdeck::{StreamDeck, StreamDeckButton, StreamDeckPlugin};
 
 fn main() -> anyhow::Result<()> {
@@ -23,10 +18,16 @@ fn main() -> anyhow::Result<()> {
         .add_plugins(StreamDeckPlugin)
         .add_plugins(SoundPlugin)
         .add_systems(Startup, set_brightness)
-        .add_systems(Update, random_colors)
+        .add_systems(Update, (random_colors, print_outputs))
         .run();
 
     Ok(())
+}
+
+fn print_outputs(outputs: Query<(&Output, &Name)>) {
+    for out in &outputs {
+        tracing::debug!("Got output: {:?}", out);
+    }
 }
 
 fn random_colors(mut deck: ResMut<StreamDeck>, button: Res<ButtonInput<StreamDeckButton>>) {

@@ -25,6 +25,21 @@ enum SoundEvent {}
 #[derive(Debug, Resource)]
 struct SoundEventListener(crossbeam_channel::Receiver<SoundEvent>);
 
+#[derive(Debug, Component)]
+pub struct Output;
+
+#[derive(Debug, Component)]
+pub struct Name(String);
+
+#[derive(Debug, Component)]
+pub struct Index(usize);
+
+#[derive(Debug, Component)]
+pub struct Volume(f32);
+
+#[derive(Debug, Component)]
+pub struct Muted(bool);
+
 fn pipewire_events(events_listener: Res<SoundEventListener>) {
     for event in events_listener.0.try_iter() {
         trace!("Got SoundEvent: {:?}", event);
@@ -34,6 +49,14 @@ fn pipewire_events(events_listener: Res<SoundEventListener>) {
 fn pipewire_init(mut commands: Commands) {
     let (events_tx, events_rx) = unbounded::<SoundEvent>();
     let (actions_tx, actions_rx) = unbounded::<Command>();
+
+    commands.spawn((
+        Output,
+        Index(179),
+        Name("Spotify".to_string()),
+        Muted(false),
+        Volume(0.5),
+    ));
 
     let taskpool = IoTaskPool::get();
     taskpool
