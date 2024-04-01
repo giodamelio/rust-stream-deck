@@ -24,7 +24,16 @@ impl StreamDeckPlus {
         let mut buffer = [0u8; 32];
         buffer[0] = 0x06;
         let _size = self.device.read_feature_report(&mut buffer).await?;
-        extract_string(&buffer)
+        extract_string(&buffer[1..])
+    }
+
+    pub async fn firmware_version(&mut self) -> Result<String> {
+        let mut buffer = [0u8; 32];
+        buffer[0] = 0x05;
+        let _size = self.device.read_feature_report(&mut buffer).await?;
+        dbg!(buffer);
+        // Not sure what the other five bytes of junk is
+        extract_string(&buffer[6..])
     }
 }
 

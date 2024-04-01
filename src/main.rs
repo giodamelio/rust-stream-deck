@@ -8,6 +8,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut deck = StreamDeckPlus::connect_exactly_one().await?;
     tracing::info!("Serial Number: {}", deck.serial_number().await?);
+    tracing::info!("Serial Number: {}", deck.firmware_version().await?);
 
     Ok(())
 }
