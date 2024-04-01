@@ -7,13 +7,16 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.81"
+async-hid = { path = "../async-hid" }
 crossbeam-channel = "0.5.12"
 elgato-streamdeck = "0.5.0"
+futures-lite = "2.3.0"
 image = "=0.24.6" # I hate this
 log = "0.4.21"
 pretty_env_logger = "0.5.0"
 pulseaudio = "0.2.1"
 rand = "0.8.5"
+tokio = { version = "1.37.0", features = ["full"] }
 tracing = { version = "0.1.40", features = ["log"] }
 
 [dependencies.bevy]

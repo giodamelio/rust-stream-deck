@@ -1,50 +1,49 @@
-mod sound;
-mod streamdeck;
+use anyhow::Result;
+use async_hid::{AccessMode, DeviceInfo, SerialNumberExt};
+use futures_lite::StreamExt;
 
-use bevy::{asset::AssetPlugin, prelude::*, render::texture::ImagePlugin, MinimalPlugins};
-
-use crate::sound::{Name, Output, SoundPlugin};
-use crate::streamdeck::{StreamDeck, StreamDeckButton, StreamDeckPlugin};
-
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     pretty_env_logger::try_init()?;
 
-    App::new()
-        .add_plugins((
-            MinimalPlugins,
-            AssetPlugin::default(),
-            ImagePlugin::default(),
-        ))
-        .add_plugins(StreamDeckPlugin)
-        .add_plugins(SoundPlugin)
-        .add_systems(Startup, set_brightness)
-        .add_systems(Update, random_colors)
-        .run();
+    let mut devices = DeviceInfo::enumerate().await?;
+    while let Some(device) = devices.next().await {
+        println!("Device: {:?}", device);
+        println!("Device: {:?}", device.serial_number());
+    }
+
+    let device = DeviceInfo::enumerate()
+        .await?
+        // StreamDeck Plus
+        .find(|info: &DeviceInfo| info.matches(12, 1, 4057, 132))
+        .await
+        .expect("Could not find device")
+        .open(AccessMode::ReadWrite)
+        .await?;
+
+    let mut buffer = [0u8; 32];
+    buffer[0] = 0x06;
+    let size = device.read_feature_report(&mut buffer).await?;
+    tracing::info!("Size: {}, Data: {:?}", size, &buffer[..size]);
+    tracing::info!("Serial?: {}", extract_string(&buffer[1..])?);
+
+    // Get Info
+    tracing::info!("Info: {:?}", device.info());
 
     Ok(())
 }
 
-// fn print_outputs(outputs: Query<(&Output, &Name)>) {
-//     for out in &outputs {
-//         tracing::debug!("Got output: {:?}", out);
-//     }
-// }
+fn extract_string(bytes: &[u8]) -> Result<String> {
+    // Find the position of the last non-NUL byte
+    let last_non_nul_pos = bytes.iter().rposition(|&x| x != 0x00);
 
-fn random_colors(mut deck: ResMut<StreamDeck>, button: Res<ButtonInput<StreamDeckButton>>) {
-    let b = StreamDeckButton(0);
-    if button.just_pressed(b) {
-        log::info!("Random Color Incoming");
-        let color = image::Rgb::<u8>([rand::random(), rand::random(), rand::random()]);
-        let _ = deck.button_set_color(b, color);
-    }
+    // Determine the slice up to the last non-NUL byte (or the whole slice if no NUL bytes)
+    let trimmed_slice = match last_non_nul_pos {
+        Some(pos) => &bytes[..=pos],
+        None => bytes,
+    };
 
-    if button.just_pressed(StreamDeckButton(1)) {
-        log::info!("Setting brightness to max");
-        let _ = deck.set_backlight(100);
-    }
-}
-
-fn set_brightness(mut deck: ResMut<StreamDeck>) {
-    log::info!("Setting brightness to max");
-    let _ = deck.set_backlight(100);
+    // Convert the trimmed slice to a Vec<u8> because String::from_utf8 expects Vec<u8>
+    let trimmed_vec = trimmed_slice.to_vec();
+    Ok(String::from_utf8(trimmed_vec)?)
 }
