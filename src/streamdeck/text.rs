@@ -43,10 +43,11 @@ pub fn render_text(width: u32, height: u32, text: String) -> RgbImage {
             return;
         }
 
-        // Fill in your code here for drawing rectangles
+        // Draw rects, scaling the colors by the alpha to kinda blend it a bit
         let rect = Rect::at(x, y).of_size(w, h);
-        let (r, g, b, _a) = color.as_rgba_tuple();
-        let pixel = image::Rgb::<u8>([r, g, b]);
+        let (r, g, b, a) = color.as_rgba_tuple();
+        let scale = |c: u8| (c as i32 * a as i32 / 255).clamp(0, 255) as u8;
+        let pixel = image::Rgb::<u8>([scale(r), scale(g), scale(b)]);
         drawing::draw_hollow_rect_mut(&mut img, rect, pixel);
     });
 
