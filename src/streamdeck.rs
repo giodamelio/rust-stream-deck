@@ -1,11 +1,13 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use async_hid::{AccessMode, Device, DeviceInfo};
 use futures_lite::StreamExt;
+use image::{codecs::jpeg::JpegEncoder, ColorType, RgbImage};
 
 pub struct StreamDeckPlus {
     device: Device,
 }
 
+#[allow(dead_code)]
 impl StreamDeckPlus {
     pub async fn connect_exactly_one() -> Result<Self> {
         let device = DeviceInfo::enumerate()
@@ -35,6 +37,12 @@ impl StreamDeckPlus {
         extract_string(&buffer[6..])
     }
 
+    pub async fn read_input(&mut self) -> Result<Input> {
+        let mut buffer = [0u8; 14];
+        self.device.read_input_report(&mut buffer).await?;
+        buffer.try_into()
+    }
+
     pub async fn set_brightness(&mut self, percent: u8) -> Result<()> {
         let mut buffer = vec![0x03, 0x08, percent];
         buffer.extend(vec![0u8; 29]);
@@ -44,10 +52,62 @@ impl StreamDeckPlus {
         Ok(())
     }
 
-    pub async fn read_input(&mut self) -> Result<Input> {
-        let mut buffer = [0u8; 14];
-        self.device.read_input_report(&mut buffer).await?;
-        buffer.try_into()
+    pub async fn set_button_color(&mut self, index: u8, color: image::Rgb<u8>) -> Result<()> {
+        ensure!(index <= 7, anyhow!("Invalid button index"));
+
+        // Create image of specified color
+        let mut img = image::ImageBuffer::new(120, 120);
+        for pixel in img.pixels_mut() {
+            *pixel = color;
+        }
+
+        self.set_button_image(index, &img).await
+    }
+
+    pub async fn set_button_image(&mut self, index: u8, image: &RgbImage) -> Result<()> {
+        ensure!(index <= 7, anyhow!("Invalid button index"));
+
+        // Encode it as JPEG
+        let mut image_data = Vec::new();
+        let mut encoder = JpegEncoder::new(&mut image_data);
+        encoder.encode(image, 120, 120, image::ExtendedColorType::Rgb8)?;
+
+        // Write the image
+        let image_report_length = 1024;
+        let image_report_header_length = 8;
+        let image_report_payload_length = image_report_length - image_report_header_length;
+
+        let mut page_number = 0;
+        let mut bytes_remaining = image_data.len();
+
+        while bytes_remaining > 0 {
+            let this_length = bytes_remaining.min(image_report_payload_length);
+            let bytes_sent = page_number * image_report_payload_length;
+
+            // Selecting header based on device
+            let mut buf: Vec<u8> = vec![
+                0x02,
+                0x07,
+                index,
+                if this_length == bytes_remaining { 1 } else { 0 },
+                (this_length & 0xff) as u8,
+                (this_length >> 8) as u8,
+                (page_number & 0xff) as u8,
+                (page_number >> 8) as u8,
+            ];
+
+            buf.extend(&image_data[bytes_sent..bytes_sent + this_length]);
+
+            // Adding padding
+            buf.extend(vec![0u8; image_report_length - buf.len()]);
+
+            self.device.write_output_report(&buf).await?;
+
+            bytes_remaining -= this_length;
+            page_number += 1;
+        }
+
+        Ok(())
     }
 }
 

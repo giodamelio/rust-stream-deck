@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.81"
 async-hid = { path = "../async-hid" }
 futures-lite = "2.3.0"
+image = { version = "0.25.1", default-features = false, features = ["rayon", "jpeg"] }
 log = "0.4.21"
 pretty_env_logger = "0.5.0"
 pulseaudio = "0.2.1"
