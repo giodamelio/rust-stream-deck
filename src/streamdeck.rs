@@ -7,6 +7,7 @@ use image::{codecs::jpeg::JpegEncoder, RgbImage};
 
 pub struct StreamDeckPlus {
     device: Device,
+    font: text::FontRenderer,
 }
 
 #[allow(dead_code)]
@@ -21,7 +22,9 @@ impl StreamDeckPlus {
             .open(AccessMode::ReadWrite)
             .await?;
 
-        Ok(Self { device })
+        let font = text::FontRenderer::new();
+
+        Ok(Self { device, font })
     }
 
     pub async fn serial_number(&mut self) -> Result<String> {
@@ -108,7 +111,7 @@ impl StreamDeckPlus {
     }
 
     pub async fn set_lcd_message(&mut self, text: String) -> Result<()> {
-        let img = text::render_text(800, 100, text);
+        let img = self.font.render_text(800, 100, text);
         self.set_lcd_image(10, 10, &img).await?;
         Ok(())
     }
