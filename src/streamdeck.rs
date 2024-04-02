@@ -1,7 +1,7 @@
 use anyhow::{anyhow, ensure, Result};
 use async_hid::{AccessMode, Device, DeviceInfo};
 use futures_lite::StreamExt;
-use image::{codecs::jpeg::JpegEncoder, ColorType, RgbImage};
+use image::{codecs::jpeg::JpegEncoder, RgbImage};
 
 pub struct StreamDeckPlus {
     device: Device,
@@ -55,12 +55,7 @@ impl StreamDeckPlus {
     pub async fn set_button_color(&mut self, index: u8, color: image::Rgb<u8>) -> Result<()> {
         ensure!(index <= 7, anyhow!("Invalid button index"));
 
-        // Create image of specified color
-        let mut img = image::ImageBuffer::new(120, 120);
-        for pixel in img.pixels_mut() {
-            *pixel = color;
-        }
-
+        let img = solid_image(120, 120, color);
         self.set_button_image(index, &img).await
     }
 
@@ -94,6 +89,67 @@ impl StreamDeckPlus {
                 (this_length >> 8) as u8,
                 (page_number & 0xff) as u8,
                 (page_number >> 8) as u8,
+            ];
+
+            buf.extend(&image_data[bytes_sent..bytes_sent + this_length]);
+
+            // Adding padding
+            buf.extend(vec![0u8; image_report_length - buf.len()]);
+
+            self.device.write_output_report(&buf).await?;
+
+            bytes_remaining -= this_length;
+            page_number += 1;
+        }
+
+        Ok(())
+    }
+
+    // 800x100 is the dimensions
+    pub async fn set_lcd_image(&mut self, x: u16, y: u16, image: &RgbImage) -> Result<()> {
+        ensure!(x <= 800, anyhow!("x must be 800 or less"));
+        ensure!(y <= 800, anyhow!("7 must be 100 or less"));
+
+        // Encode it as JPEG
+        let (width, height) = image.dimensions();
+        let mut image_data = Vec::new();
+        let mut encoder = JpegEncoder::new(&mut image_data);
+        encoder.encode(image, width, height, image::ExtendedColorType::Rgb8)?;
+
+        // Write the image
+        let image_report_length = 1024;
+        let image_report_header_length = 16;
+        let image_report_payload_length = image_report_length - image_report_header_length;
+
+        let mut page_number = 0;
+        let mut bytes_remaining = image_data.len();
+
+        while bytes_remaining > 0 {
+            let this_length = bytes_remaining.min(image_report_payload_length);
+            let bytes_sent = page_number * image_report_payload_length;
+
+            // Selecting header based on device
+            let mut buf: Vec<u8> = vec![
+                0x02,
+                0x0c,
+                (x & 0xff) as u8,
+                (x >> 8) as u8,
+                (y & 0xff) as u8,
+                (y >> 8) as u8,
+                (width & 0xff) as u8,
+                (width >> 8) as u8,
+                (height & 0xff) as u8,
+                (height >> 8) as u8,
+                if bytes_remaining <= image_report_payload_length {
+                    1
+                } else {
+                    0
+                },
+                (page_number & 0xff) as u8,
+                (page_number >> 8) as u8,
+                (this_length & 0xff) as u8,
+                (this_length >> 8) as u8,
+                0,
             ];
 
             buf.extend(&image_data[bytes_sent..bytes_sent + this_length]);
@@ -157,6 +213,15 @@ fn read_encoders(buffer: [u8; 14]) -> Result<Input> {
         )),
         _ => Err(anyhow!("Bad Encoder Data")),
     }
+}
+
+pub fn solid_image(width: u32, height: u32, color: image::Rgb<u8>) -> RgbImage {
+    // Create image of specified color
+    let mut img = image::ImageBuffer::new(width, height);
+    for pixel in img.pixels_mut() {
+        *pixel = color;
+    }
+    img
 }
 
 fn extract_string(bytes: &[u8]) -> Result<String> {
