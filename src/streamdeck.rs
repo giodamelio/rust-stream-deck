@@ -1,3 +1,5 @@
+mod text;
+
 use anyhow::{anyhow, ensure, Result};
 use async_hid::{AccessMode, Device, DeviceInfo};
 use futures_lite::StreamExt;
@@ -102,6 +104,12 @@ impl StreamDeckPlus {
             page_number += 1;
         }
 
+        Ok(())
+    }
+
+    pub async fn set_lcd_message(&mut self, text: String) -> Result<()> {
+        let img = text::render_text(800, 100, text);
+        self.set_lcd_image(10, 10, &img).await?;
         Ok(())
     }
 

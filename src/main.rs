@@ -16,9 +16,13 @@ async fn main() -> anyhow::Result<()> {
     let color = image::Rgb::<u8>([rand::random(), rand::random(), rand::random()]);
     deck.set_button_color(0, color).await?;
 
+    // Draw some text to the LCD
+    deck.set_lcd_message("Hello, Rust! 🦀\n".to_string())
+        .await?;
+
     // Add a shape to the LCD of the same color
     let img = streamdeck::solid_image(50, 50, color);
-    deck.set_lcd_image(25, 25, &img).await?;
+    deck.set_lcd_image(725, 25, &img).await?;
 
     loop {
         let input = deck.read_input().await?;
@@ -27,5 +31,9 @@ async fn main() -> anyhow::Result<()> {
         // Set the first button a random color
         let color = image::Rgb::<u8>([rand::random(), rand::random(), rand::random()]);
         deck.set_button_color(0, color).await?;
+
+        // Add a shape to the LCD of the same color
+        let img = streamdeck::solid_image(50, 50, color);
+        deck.set_lcd_image(725, 25, &img).await?;
     }
 }
