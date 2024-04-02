@@ -10,5 +10,10 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Serial Number: {}", deck.serial_number().await?);
     tracing::info!("Serial Number: {}", deck.firmware_version().await?);
 
-    Ok(())
+    deck.set_brightness(100).await?;
+
+    loop {
+        let input = deck.read_input().await?;
+        tracing::info!("Input: {:?}", input);
+    }
 }
