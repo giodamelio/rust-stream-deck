@@ -178,9 +178,9 @@ impl StreamDeckPlus {
 #[derive(Debug)]
 pub enum Input {
     None,
-    Buttons(Vec<bool>),
-    EncoderPress(Vec<bool>),
-    EncoderTwist(Vec<i8>),
+    Buttons([bool; 8]),
+    EncoderPress([bool; 4]),
+    EncoderTwist([i8; 4]),
 }
 
 impl TryFrom<[u8; 14]> for Input {
@@ -201,24 +201,31 @@ impl TryFrom<[u8; 14]> for Input {
 }
 
 fn read_buttons(buffer: [u8; 14]) -> Result<Input> {
-    Ok(Input::Buttons(
-        // Data starts at 4 and continues for the number of buttons
-        buffer[4..12].iter().map(|b| *b != 0).collect(),
-    ))
+    // Data starts at 4 and continues for the number of buttons
+    let values: Vec<bool> = buffer[4..12].iter().map(|b| *b != 0).collect();
+    Ok(Input::Buttons([
+        values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7],
+    ]))
 }
 
 fn read_encoders(buffer: [u8; 14]) -> Result<Input> {
     match buffer[4] {
         // Encoder Press
         // Data starts at 4 and continues for the number of encoders
-        0x0 => Ok(Input::EncoderPress(
-            buffer[5..9].iter().map(|b| *b != 0).collect(),
-        )),
+        0x0 => {
+            let values: Vec<bool> = buffer[5..9].iter().map(|b| *b != 0).collect();
+            Ok(Input::EncoderPress([
+                values[0], values[1], values[2], values[3],
+            ]))
+        }
         // Encoder Twist
         // Data starts at 4 and continues for the number of encoders
-        0x1 => Ok(Input::EncoderTwist(
-            buffer[5..9].iter().map(|b| i8::from_le(*b as i8)).collect(),
-        )),
+        0x1 => {
+            let values: Vec<i8> = buffer[5..9].iter().map(|b| i8::from_le(*b as i8)).collect();
+            Ok(Input::EncoderTwist([
+                values[0], values[1], values[2], values[3],
+            ]))
+        }
         _ => Err(anyhow!("Bad Encoder Data")),
     }
 }
