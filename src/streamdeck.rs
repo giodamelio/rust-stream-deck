@@ -6,13 +6,24 @@ use anyhow::{anyhow, ensure, Result};
 use async_hid::{AccessMode, Device, DeviceInfo};
 use futures_lite::StreamExt;
 use image::{codecs::jpeg::JpegEncoder, RgbImage};
-use tokio::sync::RwLock;
+use tokio::{
+    sync::{mpsc, RwLock},
+    task::JoinHandle,
+};
 
 use self::text::font_renderer;
+
+pub type SubscriptionResult = (JoinHandle<Result<()>>, mpsc::Receiver<Input>);
 
 #[derive(Clone)]
 pub struct StreamDeckPlus {
     device: Arc<RwLock<Device>>,
+}
+
+impl std::fmt::Debug for StreamDeckPlus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "StreamDeckPlus")
+    }
 }
 
 #[allow(dead_code)]
@@ -65,6 +76,12 @@ impl StreamDeckPlus {
             .read_input_report(&mut buffer)
             .await?;
         buffer.try_into()
+    }
+
+    pub fn subscribe(&self) -> Result<SubscriptionResult> {
+        let (tx, rx) = mpsc::channel::<Input>(10);
+        let handle = tokio::spawn(subscriber(tx, self.clone()));
+        Ok((handle, rx))
     }
 
     pub async fn set_brightness(&self, percent: u8) -> Result<()> {
@@ -199,6 +216,13 @@ impl StreamDeckPlus {
         }
 
         Ok(())
+    }
+}
+
+async fn subscriber(tx: mpsc::Sender<Input>, deck: StreamDeckPlus) -> Result<()> {
+    loop {
+        let input = deck.read_input().await?;
+        tx.send(input).await?;
     }
 }
 
