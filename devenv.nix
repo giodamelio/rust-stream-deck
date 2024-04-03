@@ -8,6 +8,7 @@
 
   packages = with pkgs; [
     libusb
+    tokio-console
   ];
 
   difftastic.enable = true;

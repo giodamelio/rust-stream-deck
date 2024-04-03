@@ -38,6 +38,7 @@ impl App for AppRandomColor {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     pretty_env_logger::try_init()?;
+    // console_subscriber::init();
 
     // Connect to the StreamDeck
     let mut deck = StreamDeckPlus::connect_exactly_one().await?;
