@@ -80,7 +80,9 @@ impl StreamDeckPlus {
 
     pub fn subscribe(&self) -> Result<SubscriptionResult> {
         let (tx, rx) = mpsc::channel::<Input>(10);
-        let handle = tokio::spawn(subscriber(tx, self.clone()));
+        let handle = tokio::task::Builder::new()
+            .name("input reader")
+            .spawn(subscriber(tx, self.clone()))?;
         Ok((handle, rx))
     }
 
