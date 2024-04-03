@@ -5,9 +5,10 @@ use async_hid::{AccessMode, Device, DeviceInfo};
 use futures_lite::StreamExt;
 use image::{codecs::jpeg::JpegEncoder, RgbImage};
 
+use self::text::font_renderer;
+
 pub struct StreamDeckPlus {
     device: Device,
-    font: text::FontRenderer,
 }
 
 #[allow(dead_code)]
@@ -22,9 +23,7 @@ impl StreamDeckPlus {
             .open(AccessMode::ReadWrite)
             .await?;
 
-        let font = text::FontRenderer::new();
-
-        Ok(Self { device, font })
+        Ok(Self { device })
     }
 
     pub async fn serial_number(&mut self) -> Result<String> {
@@ -111,7 +110,8 @@ impl StreamDeckPlus {
     }
 
     pub async fn set_lcd_message(&mut self, text: String) -> Result<()> {
-        let img = self.font.render_text(800, 100, text);
+        let mut renderer = font_renderer().lock().await;
+        let img = renderer.render_text(800, 100, text);
         self.set_lcd_image(10, 10, &img).await?;
         Ok(())
     }

@@ -1,6 +1,14 @@
+use std::sync::OnceLock;
+
 use cosmic_text::{Attrs, Buffer, Color, FontSystem, Metrics, Shaping, SwashCache};
 use image::RgbImage;
 use imageproc::{drawing, rect::Rect};
+use tokio::sync::Mutex;
+
+pub fn font_renderer() -> &'static Mutex<FontRenderer> {
+    static RENDERER: OnceLock<Mutex<FontRenderer>> = OnceLock::new();
+    RENDERER.get_or_init(|| Mutex::new(FontRenderer::new()))
+}
 
 #[derive(Debug)]
 pub struct FontRenderer {
