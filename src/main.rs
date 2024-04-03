@@ -41,8 +41,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Connect to the StreamDeck
     let mut deck = StreamDeckPlus::connect_exactly_one().await?;
-    tracing::info!("Serial Number: {}", deck.serial_number().await?);
-    tracing::info!("Serial Number: {}", deck.firmware_version().await?);
+    tracing::debug!("Serial Number: {}", deck.serial_number().await?);
+    tracing::debug!("Firmware Version: {}", deck.firmware_version().await?);
 
     // Turn it's brightness all the way up
     deck.set_brightness(100).await?;
