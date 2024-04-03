@@ -1,14 +1,18 @@
 mod text;
 
+use std::sync::Arc;
+
 use anyhow::{anyhow, ensure, Result};
 use async_hid::{AccessMode, Device, DeviceInfo};
 use futures_lite::StreamExt;
 use image::{codecs::jpeg::JpegEncoder, RgbImage};
+use tokio::sync::RwLock;
 
 use self::text::font_renderer;
 
+#[derive(Clone)]
 pub struct StreamDeckPlus {
-    device: Device,
+    device: Arc<RwLock<Device>>,
 }
 
 #[allow(dead_code)]
@@ -23,47 +27,67 @@ impl StreamDeckPlus {
             .open(AccessMode::ReadWrite)
             .await?;
 
-        Ok(Self { device })
+        Ok(Self {
+            device: Arc::new(RwLock::new(device)),
+        })
     }
 
-    pub async fn serial_number(&mut self) -> Result<String> {
+    pub async fn serial_number(&self) -> Result<String> {
         let mut buffer = [0u8; 32];
         buffer[0] = 0x06;
-        let _size = self.device.read_feature_report(&mut buffer).await?;
+        let _size = self
+            .device
+            .read()
+            .await
+            .read_feature_report(&mut buffer)
+            .await?;
         extract_string(&buffer[1..])
     }
 
-    pub async fn firmware_version(&mut self) -> Result<String> {
+    pub async fn firmware_version(&self) -> Result<String> {
         let mut buffer = [0u8; 32];
         buffer[0] = 0x05;
-        let _size = self.device.read_feature_report(&mut buffer).await?;
+        let _size = self
+            .device
+            .read()
+            .await
+            .read_feature_report(&mut buffer)
+            .await?;
         // Not sure what the other five bytes of junk is
         extract_string(&buffer[6..])
     }
 
     pub async fn read_input(&self) -> Result<Input> {
         let mut buffer = [0u8; 14];
-        self.device.read_input_report(&mut buffer).await?;
+        self.device
+            .read()
+            .await
+            .read_input_report(&mut buffer)
+            .await?;
         buffer.try_into()
     }
 
-    pub async fn set_brightness(&mut self, percent: u8) -> Result<()> {
+    pub async fn set_brightness(&self, percent: u8) -> Result<()> {
         let mut buffer = vec![0x03, 0x08, percent];
         buffer.extend(vec![0u8; 29]);
 
-        self.device.write_feature_report(&mut buffer).await?;
+        self.device
+            .write()
+            .await
+            .write_feature_report(&mut buffer)
+            .await?;
 
         Ok(())
     }
 
-    pub async fn set_button_color(&mut self, index: u8, color: image::Rgb<u8>) -> Result<()> {
+    pub async fn set_button_color(&self, index: u8, color: image::Rgb<u8>) -> Result<()> {
         ensure!(index <= 7, anyhow!("Invalid button index"));
 
         let img = solid_image(120, 120, color);
         self.set_button_image(index, &img).await
     }
 
-    pub async fn set_button_image(&mut self, index: u8, image: &RgbImage) -> Result<()> {
+    pub async fn set_button_image(&self, index: u8, image: &RgbImage) -> Result<()> {
         ensure!(index <= 7, anyhow!("Invalid button index"));
 
         // Encode it as JPEG
@@ -100,7 +124,7 @@ impl StreamDeckPlus {
             // Adding padding
             buf.extend(vec![0u8; image_report_length - buf.len()]);
 
-            self.device.write_output_report(&buf).await?;
+            self.device.write().await.write_output_report(&buf).await?;
 
             bytes_remaining -= this_length;
             page_number += 1;
@@ -109,7 +133,7 @@ impl StreamDeckPlus {
         Ok(())
     }
 
-    pub async fn set_lcd_message(&mut self, text: String) -> Result<()> {
+    pub async fn set_lcd_message(&self, text: String) -> Result<()> {
         let mut renderer = font_renderer().lock().await;
         let img = renderer.render_text(800, 100, text);
         self.set_lcd_image(10, 10, &img).await?;
@@ -117,7 +141,7 @@ impl StreamDeckPlus {
     }
 
     // 800x100 is the dimensions
-    pub async fn set_lcd_image(&mut self, x: u16, y: u16, image: &RgbImage) -> Result<()> {
+    pub async fn set_lcd_image(&self, x: u16, y: u16, image: &RgbImage) -> Result<()> {
         ensure!(x <= 800, anyhow!("x must be 800 or less"));
         ensure!(y <= 800, anyhow!("7 must be 100 or less"));
 
@@ -168,7 +192,7 @@ impl StreamDeckPlus {
             // Adding padding
             buf.extend(vec![0u8; image_report_length - buf.len()]);
 
-            self.device.write_output_report(&buf).await?;
+            self.device.write().await.write_output_report(&buf).await?;
 
             bytes_remaining -= this_length;
             page_number += 1;
