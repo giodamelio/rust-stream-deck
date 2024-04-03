@@ -42,7 +42,7 @@ impl StreamDeckPlus {
         extract_string(&buffer[6..])
     }
 
-    pub async fn read_input(&mut self) -> Result<Input> {
+    pub async fn read_input(&self) -> Result<Input> {
         let mut buffer = [0u8; 14];
         self.device.read_input_report(&mut buffer).await?;
         buffer.try_into()
